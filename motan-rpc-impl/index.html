@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="两只bug鸣翠柳，一行代码上西天">
+    <meta name="keyword"  content="算法 大数据 系统架构 机器学习 Java技术 中间件 高并发">
+    <link rel="shortcut icon" href="/img/favicon.ico">
+    <meta name="baidu-site-verification" content="I9urFMjvnH" />
+<meta name="google-site-verification" content="kOhH4Y18J0KFSbfkCwJhRGpHFvY1aoSeyVci6XDCxAs" />
+    <title>
+        
+          从motan看RPC框架设计 - Kris的博客 | Kris&#39; Blog
+        
+    </title>
+
+    <link rel="canonical" href="kriszhang.com/motan-rpc-impl/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="/css/syntax.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="http://cdn.staticfile.org/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id='wx_pic' style='margin:0 auto;display:none;'>
+    <img src='motan_arch.png' />
+  </div>
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Kris&#39; Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="kriszhang.com/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('head.jpg')
+    }
+</style>
+<header class="intro-header" >
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#框架" title="框架">框架</a>
+                        
+                          <a class="tag" href="/tags/#开源" title="开源">开源</a>
+                        
+                          <a class="tag" href="/tags/#RPC" title="RPC">RPC</a>
+                        
+                    </div>
+                    <h1>从motan看RPC框架设计</h1>
+                    <h2 class="subheading">motan源码导读</h2>
+                    <span class="meta">
+                        Posted by kris.zhang on
+                        2016-07-21
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "//hm.baidu.com/hm.js?e06e6395b235a8f00dd89c228abbb3f1";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+    </script>
+</header>
+
+<!-- Post Content -->
+<article>
+  <div id='wx_pic' style='margin:0 auto;display:none;'>
+    <img src='motan_arch.png' />
+  </div>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <blockquote>
+<p>&#x8BA1;&#x7B97;&#x673A;&#x79D1;&#x5B66;&#x9886;&#x57DF;&#x7684;&#x4EFB;&#x4F55;&#x95EE;&#x9898;&#x90FD;&#x53EF;&#x4EE5;&#x901A;&#x8FC7;&#x589E;&#x52A0;&#x4E00;&#x4E2A;&#x95F4;&#x63A5;&#x7684;&#x4E2D;&#x95F4;&#x5C42;&#x6765;&#x89E3;&#x51B3;</p>
+</blockquote>
+<p>&#x4ECE;&#x96F6;&#x5F00;&#x53D1;&#x4E00;&#x6B3E;RPC&#x6846;&#x67B6;&#xFF0C;&#x8BF4;&#x96BE;&#x4E5F;&#x96BE;&#x8BF4;&#x7B80;&#x5355;&#x4E5F;&#x7B80;&#x5355;&#x3002;&#x96BE;&#x7684;&#x662F;&#x4F60;&#x7684;&#x8BBE;&#x8BA1;&#x5C06;&#x5982;&#x4F55;&#x9762;&#x5BF9;&#x5B9E;&#x9645;&#x4E2D;&#x7684;&#x590D;&#x6742;&#x5E94;&#x7528;&#x573A;&#x666F;&#xFF1B;&#x7B80;&#x5355;&#x7684;&#x662F;&#x5176;&#x601D;&#x60F3;&#x53EF;&#x4EE5;&#x4EC5;&#x4EC5;&#x6D53;&#x7F29;&#x6210;&#x4E00;&#x884C;&#x65B9;&#x6CD5;&#x8C03;&#x7528;&#x3002;<code>motan</code>&#x662F;&#x4ECA;&#x5E74;(2016&#x5E74;)&#x65B0;&#x6D6A;&#x5FAE;&#x535A;&#x5F00;&#x6E90;&#x7684;&#x4E00;&#x6B3E;RPC&#x6846;&#x67B6;&#xFF0C;&#x636E;&#x8BF4;&#x5728;&#x65B0;&#x6D6A;&#x5FAE;&#x535A;&#x6B63;&#x652F;&#x6491;&#x7740;&#x5343;&#x4EBF;&#x6B21;&#x8C03;&#x7528;&#x3002;&#x5BF9;&#x4E8E;&#x5979;&#x7684;&#x8BE6;&#x7EC6;&#x4ECB;&#x7ECD;&#x548C;&#x8D5E;&#x8A89;&#x662F;&#x65B0;&#x95FB;&#x7A3F;&#x548C;README&#x7684;&#x8D23;&#x4EFB;&#xFF0C;&#x672C;&#x6587;&#x5219;&#x4F1A;&#x4ECE;RPC&#x7684;&#x57FA;&#x672C;&#x539F;&#x7406;&#x5165;&#x624B;&#xFF0C;&#x5206;&#x6790;&#x548C;&#x8BB2;&#x89E3;motan&#x7684;&#x5404;&#x5C42;&#x7684;&#x5B9E;&#x73B0;&#x601D;&#x60F3;&#x3002;</p>
+<p>&#x4E3A;&#x4E86;&#x907F;&#x514D;&#x843D;&#x5165;&#x4FD7;&#x5957;&#xFF0C;&#x672C;&#x6587;&#x5C06;&#x5C3D;&#x529B;&#x907F;&#x514D;&#x5BF9;&#x5404;&#x79CD;&#x6982;&#x5FF5;&#x7684;&#x89E3;&#x91CA;&#xFF08;&#x8FD9;&#x662F;wiki&#x7684;&#x8D23;&#x4EFB;&#xFF09;&#xFF0C;&#x5E76;&#x9ED8;&#x8BA4;&#x8BFB;&#x8005;&#x5DF2;&#x7ECF;&#x6709;&#x4E86;&#x76F8;&#x5173;RPC&#x6846;&#x67B6;&#x7684;&#x4F7F;&#x7528;&#x7ECF;&#x9A8C;&#xFF08;&#x6BD4;&#x5982;<code>dubbo</code>&#xFF09;&#x3002;&#x4E3A;&#x4E86;&#x4F7F;&#x5F97;&#x6587;&#x7AE0;&#x5145;&#x6EE1;&#x2019;&#x5E72;&#x8D27;&#x2019;&#xFF0C;&#x672C;&#x6587;&#x91CD;&#x70B9;&#x8BB2;&#x89E3;&#x7684;&#x662F;<code>motan</code>&#x7684;&#x5B9E;&#x73B0;&#x539F;&#x7406;&#xFF0C;&#x5E76;&#x914D;&#x6709;&#x4E00;&#x5B9A;&#x91CF;&#x7684;&#x4EE3;&#x7801;&#x4E88;&#x4EE5;&#x89E3;&#x91CA;&#x3002;&#x8FD9;&#x4F1A;&#x4F7F;&#x8BFB;&#x8005;&#x4E0D;&#x4F46;&#x77E5;&#x6653;RPC&#x6846;&#x67B6;&#x7684;&#x8BBE;&#x8BA1;&#x601D;&#x8DEF;&#xFF0C;&#x4E5F;&#x80FD;&#x77E5;&#x9053;&#x76F8;&#x5173;&#x751F;&#x4EA7;&#x4EE3;&#x7801;&#x7A76;&#x7ADF;&#x662F;&#x5982;&#x4F55;&#x7F16;&#x5199;&#x7684;&#xFF08;&#x5728;&#x8FD9;&#x4E2A;&#x6D6E;&#x8E81;&#x7684;&#x5E74;&#x4EE3;&#xFF0C;&#x53EA;&#x6709;&#x7B97;&#x6CD5;&#x548C;&#x4EE3;&#x7801;&#x662F;&#x6700;&#x5E72;&#x7684;&#x8D27;&#xFF09;&#x3002;</p>
+<p>&#x672C;&#x6587;&#x5148;&#x7B80;&#x5355;&#x89E3;&#x91CA;&#x4E00;&#x4E0B;RPC&#x7684;&#x672C;&#x8D28;&#xFF0C;&#x7136;&#x540E;&#x76F4;&#x63A5;&#x7ED9;&#x51FA;<code>motan</code>&#x7684;&#x6574;&#x4F53;&#x67B6;&#x6784;&#xFF0C;&#x5E76;&#x89E3;&#x91CA;&#x6BCF;&#x5C42;&#x7684;&#x5177;&#x4F53;&#x542B;&#x4E49;&#x3002;&#x7136;&#x540E;&#x6211;&#x4EEC;&#x5C06;&#x4ECE;&#x4E00;&#x6BB5;XML&#x7684;&#x914D;&#x7F6E;&#x5165;&#x624B;&#xFF0C;&#x8BE6;&#x7EC6;&#x8BB2;&#x89E3;provider&#x4E0E;consumer&#x7684;&#x521D;&#x59CB;&#x5316;&#x6D41;&#x7A0B;&#x4EE5;&#x53CA;&#x8C03;&#x7528;&#x548C;&#x670D;&#x52A1;&#x6D41;&#x7A0B;&#x3002;&#x6700;&#x540E;&#x6311;&#x9009;&#x51E0;&#x4E2A;&#x6BD4;&#x8F83;&#x91CD;&#x8981;&#x7684;&#x673A;&#x5236;&#x8FDB;&#x884C;&#x8BB2;&#x89E3;&#x3002;</p>
+<p>&#x5728;&#x5F00;&#x59CB;&#x4E4B;&#x524D;&#xFF0C;&#x8BA9;&#x6211;&#x4EEC;&#x601D;&#x8003;&#x4EE5;&#x4E0B;&#x51E0;&#x4E2A;&#x95EE;&#x9898;&#xFF1A;</p>
+<ul>
+<li>&#x5982;&#x4F55;&#x4E0E;Spring&#x505A;&#x96C6;&#x6210;&#xFF1F;</li>
+<li>SPI&#x673A;&#x5236;&#x7684;&#x5B9E;&#x73B0;&#x539F;&#x7406;&#x662F;&#x4EC0;&#x4E48;&#xFF1F;&#x4E3A;&#x4EC0;&#x4E48;&#x8981;&#x7528;&#x8FD9;&#x4E2A;&#xFF1F;</li>
+<li>&#x8FD9;&#x4E48;&#x591A;&#x7684;&#x914D;&#x7F6E;&#xFF0C;&#x7A76;&#x7ADF;&#x662F;&#x5982;&#x4F55;&#x5728;&#x7C7B;&#x95F4;&#x4F20;&#x9012;&#x548C;&#x4FDD;&#x5B58;&#x7684;&#xFF1F;</li>
+<li>&#x670D;&#x52A1;&#x964D;&#x7EA7;&#x662F;&#x5982;&#x4F55;&#x505A;&#x7684;&#xFF1F;</li>
+<li>motan&#x534F;&#x8BAE;&#x7A76;&#x7ADF;&#x662F;&#x4EC0;&#x4E48;&#x6837;&#x5B50;&#x7684;&#xFF1F;</li>
+<li>&#x670D;&#x52A1;&#x53D1;&#x73B0;&#x548C;&#x6CE8;&#x518C;&#x7A76;&#x7ADF;&#x662F;&#x600E;&#x4E48;&#x505A;&#x7684;&#xFF1F;&#x6216;&#x8005;&#x8BF4;&#x5BA2;&#x6237;&#x7AEF;&#x662F;&#x5982;&#x4F55;&#x627E;&#x5230;&#x670D;&#x52A1;&#x7AEF;&#x7684;&#xFF1F;</li>
+<li>&#x4E3A;&#x4EC0;&#x4E48;&#x8981;&#x7528;&#x52A8;&#x6001;&#x4EE3;&#x7406;&#xFF0C;&#x5230;&#x5E95;proxy&#x4E86;&#x4EC0;&#x4E48;&#xFF1F;</li>
+<li>cluster&#x7684;&#x8D1F;&#x8F7D;&#x5747;&#x8861;&#x548C;ha&#x7A76;&#x7ADF;&#x662F;&#x5982;&#x4F55;&#x5B9E;&#x73B0;&#x7684;&#xFF1F;</li>
+<li>transport&#x5C42;&#x662F;&#x600E;&#x4E48;&#x8FDB;&#x884C;&#x62BD;&#x8C61;&#x7684;&#xFF1F;</li>
+<li>client&#x5BF9;server&#x7684;&#x5FC3;&#x8DF3;&#x68C0;&#x6D4B;&#x662F;&#x600E;&#x4E48;&#x5B9E;&#x73B0;&#x7684;&#x5462;&#xFF1F;</li>
+<li>client&#x7AEF;&#x7684;&#x8FDE;&#x63A5;&#x6C60;&#x662F;&#x5982;&#x4F55;&#x7BA1;&#x7406;&#x7684;&#xFF1F;</li>
+<li>server&#x7AEF;&#x7684;&#x8FDE;&#x63A5;&#x662F;&#x5982;&#x4F55;&#x5171;&#x4EAB;&#x7684;&#xFF1F;</li>
+</ul>
+<h1 id="&#x6982;&#x8FF0;"><a href="#&#x6982;&#x8FF0;" class="headerlink" title="&#x6982;&#x8FF0;"></a>&#x6982;&#x8FF0;</h1><h2 id="&#x5BF9;rpc&#x672C;&#x8D28;&#x7684;&#x7406;&#x89E3;"><a href="#&#x5BF9;RPC&#x672C;&#x8D28;&#x7684;&#x7406;&#x89E3;" class="headerlink" title="&#x5BF9;RPC&#x672C;&#x8D28;&#x7684;&#x7406;&#x89E3;"></a>&#x5BF9;RPC&#x672C;&#x8D28;&#x7684;&#x7406;&#x89E3;</h2><p>&#x5BF9;&#x4E8E;&#x8F6F;&#x4EF6;&#x5DE5;&#x7A0B;&#x5E08;&#x6765;&#x8BB2;&#xFF0C;&#x5F62;&#x5982;<code>object.method()</code>&#x7684;&#x65B9;&#x6CD5;&#x8C03;&#x7528;&#x5B9E;&#x5728;&#x662F;&#x592A;&#x8FC7;&#x719F;&#x6089;&#xFF0C;&#x5F53;&#x6211;&#x4EEC;&#x5728;&#x540C;&#x4E00;&#x4E2A;JVM&#x8FDB;&#x7A0B;&#x5185;&#x6267;&#x884C;&#x65B9;&#x6CD5;&#x8C03;&#x7528;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x4E00;&#x5207;&#x90FD;&#x663E;&#x5F97;&#x987A;&#x5176;&#x81EA;&#x7136;&#x3002;&#x7136;&#x800C;&#x5982;&#x679C;&#x6211;&#x4EEC;&#x5C06;&#x4E0A;&#x8FF0;&#x7684;&#x8C03;&#x7528;&#x8FC7;&#x7A0B;&#x62C6;&#x5206;&#x6210;&#x4E24;&#x4E2A;&#x90E8;&#x5206;&#x2014;-&#x65B9;&#x6CD5;&#x7684;<code>&#x8C03;&#x7528;&#x7AEF;</code>&#x548C;&#x65B9;&#x6CD5;&#x7684;<code>&#x5B9E;&#x73B0;&#x7AEF;</code>&#xFF0C;&#x7136;&#x540E;&#x5C06;&#x4ED6;&#x4EEC;&#x5206;&#x522B;&#x653E;&#x7F6E;&#x5230;&#x4E0D;&#x540C;&#x7684;&#x8FDB;&#x7A0B;&#x4E2D;&#xFF0C;&#x4F7F;&#x5F97;&#x8C03;&#x7528;&#x7AEF;&#x548C;&#x5B9E;&#x73B0;&#x7AEF;&#x80FD;&#x591F;&#x505A;&#x5230;&#x8DE8;&#x64CD;&#x4F5C;&#x7CFB;&#x7EDF;&#xFF0C;&#x8DE8;&#x7F51;&#x7EDC;&#x3002;&#x8FD9;&#x4FBF;&#x662F;RPC&#x7684;&#x672C;&#x8D28;&#x3002;</p>
+<p>&#x4ECE;&#x529F;&#x80FD;&#x89D2;&#x5EA6;&#x6765;&#x8BB2;&#xFF0C;RPC&#x6846;&#x67B6;&#x53EF;&#x4EE5;&#x5206;&#x4E3A;<code>&#x670D;&#x52A1;&#x6CBB;&#x7406;&#x578B;</code>&#x548C;<code>&#x591A;&#x8BED;&#x8A00;&#x578B;</code>&#x3002;motan&#x663E;&#x7136;&#x5C5E;&#x4E8E;&#x524D;&#x8005;&#xFF0C;&#x56E0;&#x6B64;&#x5BF9;motan&#x6846;&#x67B6;&#x53EF;&#x4EE5;&#x7B80;&#x5355;&#x7684;&#x7406;&#x89E3;&#x4E3A;&#xFF1A;<em>&#x5206;&#x79BB;&#x65B9;&#x6CD5;&#x7684;&#x8C03;&#x7528;&#x548C;&#x5B9E;&#x73B0;&#xFF0C;&#x5E76;&#x5177;&#x53CC;&#x7AEF;&#x670D;&#x52A1;&#x6CBB;&#x7406;&#x529F;&#x80FD;</em>&#x3002;</p>
+<h2 id="motan&#x7684;&#x6574;&#x4F53;&#x67B6;&#x6784;"><a href="#motan&#x7684;&#x6574;&#x4F53;&#x67B6;&#x6784;" class="headerlink" title="motan&#x7684;&#x6574;&#x4F53;&#x67B6;&#x6784;"></a>motan&#x7684;&#x6574;&#x4F53;&#x67B6;&#x6784;</h2><p>&#x5206;&#x5C42;&#x662F;&#x8F6F;&#x4EF6;&#x8BBE;&#x8BA1;&#x7684;&#x57FA;&#x7840;&#x5DE5;&#x5177;&#xFF0C;&#x51E0;&#x4E4E;&#x6240;&#x6709;&#x8F6F;&#x4EF6;&#x90FD;&#x6709;&#x5206;&#x5C42;&#x7684;&#x5F71;&#x5B50;&#xFF0C;motan&#x4E5F;&#x4E0D;&#x4F8B;&#x5916;&#xFF0C;&#x89C1;&#x4E0B;&#x56FE;&#xFF1A;</p>
+<p><img src="/motan-rpc-impl/motan_arch.png" alt="motan&#x5206;&#x5C42;&#x67B6;&#x6784;&#x56FE;"></p>
+<p>&#x4ECE;&#x4E0A;&#x56FE;&#x53EF;&#x4EE5;&#x770B;&#x5230;&#xFF0C;motan&#x7684;&#x67B6;&#x6784;&#x5C42;&#x6B21;&#x975E;&#x5E38;&#x6E05;&#x6670;&#xFF08;&#x6709;&#x70B9;&#x7C7B;&#x4F3C;dubbo&#xFF0C;&#x5173;&#x4E8E;&#x533A;&#x522B;&#x8BF7;&#x53C2;&#x8003;<a href="#&#x540E;&#x8BB0;">&#x540E;&#x8BB0;</a>&#xFF09;&#xFF0C;&#x4ECE;&#x4E0A;&#x5230;&#x4E0B;&#x5206;&#x4E3A;6&#x5C42;&#xFF0C;&#x5176;&#x4E2D;&#x53F3;&#x4FA7;&#x90E8;&#x5206;&#x4E3A;&#x901A;&#x7528;&#x7EC4;&#x4EF6;&#x670D;&#x52A1;&#x3002;&#x8DDF;&#x5176;&#x4ED6;&#x6240;&#x6709;RPC&#x4E00;&#x6837;&#xFF0C;motan&#x6846;&#x67B6;&#x4E5F;&#x6709;&#x4E24;&#x4E2A;&#x6838;&#x5FC3;&#x8109;&#x7EDC;&#xFF0C;&#x5176;&#x4E00;&#x662F;<code>&#x5BA2;&#x6237;&#x7AEF;</code>&#xFF08;&#x5BF9;&#x5E94;&#x56FE;&#x5DE6;&#x4FA7;&#x5782;&#x76F4;&#x7BAD;&#x5934;&#xFF09;&#xFF0C;&#x548C;<code>&#x670D;&#x52A1;&#x7AEF;</code>&#xFF08;&#x5BF9;&#x5E94;&#x4E8E;&#x53F3;&#x4FA7;&#x7BAD;&#x5934;&#xFF09;&#xFF0C;&#x670D;&#x52A1;&#x7AEF;&#x4E0D;&#x9700;&#x8981;&#x8FDB;&#x884C;&#x52A8;&#x6001;&#x4EE3;&#x7406;&#xFF0C;&#x7406;&#x7531;&#x5F88;&#x7B80;&#x5355;&#xFF0C;&#x56E0;&#x4E3A;&#x670D;&#x52A1;&#x7AEF;&#x5DF2;&#x7ECF;&#x6709;&#x4E86;&#x5B9E;&#x73B0;&#xFF0C;&#x4E0D;&#x9700;&#x8981;&#x5728;&#x8FDB;&#x884C;&#x4EE3;&#x7406;&#x3002;&#x6700;&#x4E0B;&#x9762;&#x7684;endpoint(client)&#x5230;endpoint(server)&#x5C31;&#x662F;TCP&#x5168;&#x53CC;&#x5DE5;&#x94FE;&#x63A5;&#x3002;</p>
+<p>&#x5148;&#x6765;&#x8BF4;&#x516C;&#x5171;&#x7EC4;&#x4EF6;&#x90E8;&#x5206;&#xFF1A;</p>
+<ul>
+<li>SPI&#xFF1A;Service Provider Interface&#xFF0C;&#x4E3B;&#x8981;&#x901A;&#x8FC7;ExtensionLoader&#x63D0;&#x4F9B;&#x6269;&#x5C55;&#x70B9;&#x529F;&#x80FD;&#xFF0C;&#x7528;&#x6765;&#x52A8;&#x6001;&#x88C5;&#x8F7D;&#x63A5;&#x53E3;&#x5177;&#x4F53;&#x5B9E;&#x73B0;&#xFF0C;&#x4EE5;&#x63D0;&#x4F9B;&#x5BA2;&#x6237;&#x7AEF;&#x6269;&#x5C55;&#x80FD;&#x529B;&#x3002;</li>
+<li>Logger&#xFF1A;&#x4F7F;&#x7528;slf4j&#xFF0C;&#x63D0;&#x4F9B;&#x6574;&#x4E2A;&#x6846;&#x67B6;&#x7EDF;&#x4E00;&#x7684;&#x65E5;&#x5FD7;&#x8BB0;&#x5F55;&#x5DE5;&#x5177;&#x3002;</li>
+<li>Statistic&#xFF1A;&#x4F7F;&#x7528;&#x5B9A;&#x65F6;&#x56DE;&#x8C03;&#x65B9;&#x5F0F;&#xFF0C;&#x6536;&#x96C6;&#x548C;&#x8BB0;&#x5F55;&#x6846;&#x67B6;&#x76D1;&#x63A7;&#x4FE1;&#x606F;&#x3002;</li>
+<li>URL&#xFF1A;&#x975E;Jdk&#x91CC;&#x7684;URL&#x3002;&#x4ED6;&#x5BF9;&#x534F;&#x8BAE;&#xFF0C;&#x8DEF;&#x5F84;&#xFF0C;&#x53C2;&#x6570;&#x7684;&#x7EDF;&#x4E00;&#x62BD;&#x8C61;&#xFF0C;&#x7CFB;&#x7EDF;&#x4E5F;&#x662F;&#x4F7F;&#x7528;URL&#x6765;&#x4FDD;&#x5B58;&#x548C;&#x8BFB;&#x53D6;&#x914D;&#x7F6E;&#x4FE1;&#x606F;&#x7684;&#x3002;</li>
+<li>Switcher&#xFF1A;&#x63D0;&#x4F9B;&#x5F00;&#x5173;&#x63A7;&#x5236;&#x670D;&#x52A1;&#xFF0C;&#x80FD;&#x591F;&#x63A7;&#x5236;&#x6846;&#x67B6;&#x5173;&#x952E;&#x8DEF;&#x5F84;&#x7684;&#x5347;&#x7EA7;&#x548C;&#x964D;&#x7EA7;&#x3002;</li>
+<li>Exception&#xFF1A;&#x7EDF;&#x4E00;&#x5F02;&#x5E38;&#x5904;&#x7406;&#xFF0C;&#x5206;&#x4E3A;&#x4E1A;&#x52A1;&#x5F02;&#x5E38;&#xFF0C;&#x6846;&#x67B6;&#x5F02;&#x5E38;&#xFF0C;&#x670D;&#x52A1;&#x5F02;&#x5E38;&#x7B49;&#x3002;</li>
+</ul>
+<p>&#x518D;&#x6765;&#x8BF4;&#x6BCF;&#x4E00;&#x4E2A;&#x5C42;&#x7684;&#x4F5C;&#x7528;&#xFF1A;</p>
+<ul>
+<li>Config&#x5C42;&#xFF1A;&#x4E3B;&#x8981;&#x63D0;&#x4F9B;&#x4E86;&#x914D;&#x7F6E;&#x8BFB;&#x53D6;&#xFF0C;&#x89E3;&#x6790;&#xFF0C;&#x5B9E;&#x4F53;&#x751F;&#x6210;&#x3002;&#x540C;&#x65F6;&#x4ED6;&#x4E5F;&#x662F;&#x6574;&#x4E2A;&#x6846;&#x67B6;&#x7684;&#x5165;&#x53E3;&#xFF0C;</li>
+<li>Proxy&#x5C42;&#xFF1A;&#x670D;&#x52A1;&#x7AEF;&#x65E0;proxy&#xFF0C;&#x5BA2;&#x6237;&#x7AEF;&#x5177;&#x6709;&#x4EE3;&#x7406;&#x529F;&#x80FD;&#xFF0C;&#x4ED6;&#x901A;&#x8FC7;InvocationHandler&#x6765;&#x62E6;&#x622A;&#x65B9;&#x6CD5;&#x8C03;&#x7528;&#x3002;&#x76EE;&#x524D;&#x53EA;&#x4F7F;&#x7528;&#x4E86;jdk&#x539F;&#x751F;&#x52A8;&#x6001;&#x4EE3;&#x7406;&#x5DE5;&#x5177;&#x3002;</li>
+<li>Registry&#x5C42;&#xFF1A;&#x7528;&#x6765;&#x8FDB;&#x884C;&#x670D;&#x52A1;&#x53D1;&#x73B0;&#x548C;&#x6CE8;&#x518C;&#xFF0C;server&#x7AEF;&#x8FDB;&#x884C;&#x670D;&#x52A1;&#x7684;&#x6CE8;&#x518C;&#xFF0C;client&#x8FDB;&#x884C;&#x670D;&#x52A1;&#x53D1;&#x73B0;&#x3002;&#x76EE;&#x524D;&#x6709;zk,consul&#x7684;&#x5B9E;&#x73B0;&#xFF0C;&#x8FD8;&#x6709;&#x5BF9;directUrl&#xFF08;&#x5C31;&#x662F;p2p&#xFF0C;&#x4E0D;&#x501F;&#x52A9;&#x4E2D;&#x5FC3;&#xFF09;&#x7684;&#x7279;&#x6B8A;&#x5904;&#x7406;&#x3002;</li>
+<li>Cluster&#x5C42;&#xFF1A;&#x96C6;&#x7FA4;&#x529F;&#x80FD;&#xFF0C;&#x4ED6;&#x63D0;&#x4F9B;&#x4E86;&#x96C6;&#x7FA4;&#x7684;&#x670D;&#x52A1;&#x66B4;&#x9732;&#x3001;&#x670D;&#x52A1;&#x5F15;&#x7528;&#x3001;&#x8D1F;&#x8F7D;&#x5747;&#x8861;&#xFF0C;HA&#x7B49;&#x3002;</li>
+<li>Protocol&#x5C42;&#xFF1A;&#x534F;&#x8BAE;&#x5C42;&#xFF0C;&#x76EE;&#x524D;&#x53EA;&#x652F;&#x6301;injvm&#x548C;motan&#x534F;&#x8BAE;&#xFF0C;&#x4E3B;&#x8981;&#x5C31;&#x662F;&#x63D0;&#x4F9B;&#x7ED9;&#x4E0B;&#x5C42;&#x534F;&#x8BAE;&#x7F16;&#x7801;&#x548C;&#x89E3;&#x6790;&#xFF0C;&#x5E76;&#x4E14;&#x4F7F;&#x7528;filter/pipe&#x6A21;&#x5F0F;&#x8FDB;&#x884C;&#x8BBF;&#x95EE;&#x65E5;&#x5FD7;&#xFF0C;&#x6700;&#x5927;&#x5E76;&#x53D1;&#x91CF;&#x63A7;&#x5236;&#x7B49;&#x529F;&#x80FD;&#x3002;</li>
+<li>Transport&#x5C42;&#xFF1A;&#x4E3B;&#x8981;&#x5904;&#x7406;&#x7F51;&#x7EDC;&#x8FDE;&#x63A5;&#xFF0C;&#x4ED6;&#x4E3B;&#x8981;&#x62BD;&#x8C61;&#x4E86;Client&#x548C;Server&#x63A5;&#x53E3;&#x3002;&#x4F7F;&#x7528;netty&#x6846;&#x67B6;&#x3002;</li>
+</ul>
+<h1 id="&#x4ECE;&#x4E24;&#x7AEF;&#x770B;&#x6838;&#x5FC3;&#x8C03;&#x7528;&#x94FE;"><a href="#&#x4ECE;&#x4E24;&#x7AEF;&#x770B;&#x6838;&#x5FC3;&#x8C03;&#x7528;&#x94FE;" class="headerlink" title="&#x4ECE;&#x4E24;&#x7AEF;&#x770B;&#x6838;&#x5FC3;&#x8C03;&#x7528;&#x94FE;"></a>&#x4ECE;&#x4E24;&#x7AEF;&#x770B;&#x6838;&#x5FC3;&#x8C03;&#x7528;&#x94FE;</h1><h2 id="privder&#x7AEF;"><a href="#privder&#x7AEF;" class="headerlink" title="privder&#x7AEF;"></a>privder&#x7AEF;</h2><h3 id="&#x521D;&#x59CB;&#x5316;&#x8FC7;&#x7A0B;"><a href="#&#x521D;&#x59CB;&#x5316;&#x8FC7;&#x7A0B;" class="headerlink" title="&#x521D;&#x59CB;&#x5316;&#x8FC7;&#x7A0B;"></a>&#x521D;&#x59CB;&#x5316;&#x8FC7;&#x7A0B;</h3><p>&#x8BF7;&#x770B;&#x4E0B;&#x9762;&#x914D;&#x7F6E;</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><div class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">id</span>=<span class="string">&quot;motanDemoServiceImpl&quot;</span> <span class="attr">class</span>=<span class="string">&quot;com.weibo.motan.demo.server.MotanDemoServiceImpl&quot;</span>/&gt;</span></div><div class="line"></div><div class="line"><span class="tag">&lt;<span class="name">motan:registry</span> <span class="attr">regProtocol</span>=<span class="string">&quot;zookeeper&quot;</span></span></div><div class="line">                <span class="attr">name</span>=<span class="string">&quot;registry&quot;</span></div><div class="line">                <span class="attr">address</span>=<span class="string">&quot;127.0.0.1:2181&quot;</span>/&gt;</div><div class="line"></div><div class="line"><span class="tag">&lt;<span class="name">motan:protocol</span> <span class="attr">id</span>=<span class="string">&quot;demoMotan&quot;</span> <span class="attr">default</span>=<span class="string">&quot;true&quot;</span> <span class="attr">name</span>=<span class="string">&quot;motan&quot;</span>/&gt;</span></div><div class="line"></div><div class="line"><span class="tag">&lt;<span class="name">motan:basicService</span> <span class="attr">export</span>=<span class="string">&quot;demoMotan:8002&quot;</span></span></div><div class="line">                    <span class="attr">group</span>=<span class="string">&quot;motan-demo-rpc&quot;</span></div><div class="line">                    <span class="attr">registry</span>=<span class="string">&quot;registry&quot;</span>/&gt;</div><div class="line"></div><div class="line"><span class="tag">&lt;<span class="name">motan:service</span> <span class="attr">interface</span>=<span class="string">&quot;com.weibo.motan.demo.service.MotanDemoService&quot;</span></span></div><div class="line">               <span class="attr">ref</span>=<span class="string">&quot;motanDemoServiceImpl&quot;</span> <span class="attr">basicService</span>=<span class="string">&quot;serviceBasicConfig&quot;</span>&gt;</div><div class="line"><span class="tag">&lt;/<span class="name">motan:service</span>&gt;</span></div></pre></td></tr></table></figure>
+<p>&#x5982;&#x679C;&#x6709;dubbo&#x7684;&#x4F7F;&#x7528;&#x7ECF;&#x9A8C;&#xFF0C;&#x4E0A;&#x8FF0;&#x914D;&#x7F6E;&#x975E;&#x5E38;&#x5BB9;&#x6613;&#x770B;&#x61C2;&#x3002;&#x7B80;&#x5355;&#x7684;&#x8BF4;&#xFF0C;&#x4E0A;&#x8FF0;&#x4EE3;&#x7801;&#x4F7F;&#x7528;motan&#x534F;&#x8BAE;&#xFF0C;&#x5728;8002&#x7AEF;&#x53E3;&#x4E0A;&#x66B4;&#x9732;&#x4E86;<code>motanDemoServiceImpl</code>&#x670D;&#x52A1;&#x3002;&#x4EFB;&#x4F55;client&#x90FD;&#x53EF;&#x4EE5;&#x8FDE;&#x63A5;&#x5230;8002&#x7AEF;&#x53E3;&#xFF0C;&#x5E76;&#x4F7F;&#x7528;motan&#x534F;&#x8BAE;&#x8C03;&#x7528;&#x8FD9;&#x4E2A;&#x670D;&#x52A1;&#x3002;&#x8FD9;&#x4E2A;&#x670D;&#x52A1;&#x63D0;&#x4F9B;&#x7684;&#x529F;&#x80FD;&#x4E5F;&#x5F88;&#x7B80;&#x5355;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MotanDemoServiceImpl</span> <span class="keyword">implements</span> <span class="title">MotanDemoService</span> </span>{</div><div class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">hello</span><span class="params">(String name)</span> </span>{</div><div class="line">        System.out.println(name);</div><div class="line">        <span class="keyword">return</span> <span class="string">&quot;Hello &quot;</span> + name + <span class="string">&quot;!&quot;</span>;</div><div class="line">    }</div><div class="line">}</div></pre></td></tr></table></figure>
+<p>&#x8FD9;&#xFF0C;&#x770B;&#x4F3C;&#x7B80;&#x5355;&#xFF0C;&#x4F46;&#xFF0C;&#x7A76;&#x7ADF;&#x90FD;&#x53D1;&#x751F;&#x4E86;&#x4EC0;&#x4E48;&#xFF1F;</p>
+<h4 id="&#x914D;&#x7F6E;&#x89E3;&#x6790;"><a href="#&#x914D;&#x7F6E;&#x89E3;&#x6790;" class="headerlink" title="&#x914D;&#x7F6E;&#x89E3;&#x6790;"></a>&#x914D;&#x7F6E;&#x89E3;&#x6790;</h4><p>&#x6240;&#x8C13;&#x914D;&#x7F6E;&#x89E3;&#x6790;&#x5B9E;&#x9645;&#x4E0A;&#x5C31;&#x662F;&#x5B8C;&#x6210;&#x4E00;&#x79CD;&#x6620;&#x5C04;&#x529F;&#x80FD;&#xFF0C;&#x5373;xml-&gt;java&#x7684;&#x8FC7;&#x7A0B;&#x3002;&#x90A3;&#x4E48;&#x505A;&#x5230;xml&#x5230;&#x5BF9;&#x8C61;&#x7684;&#x6620;&#x5C04;&#x5462;&#xFF1F;&#x5982;&#x679C;&#x662F;&#x666E;&#x901A;&#x7684;xml&#x6587;&#x4EF6;&#xFF0C;&#x6211;&#x4EEC;&#x5B8C;&#x5168;&#x53EF;&#x4EE5;&#x4F7F;&#x7528;JAXB&#xFF1B;&#x5982;&#x679C;&#x662F;spring&#xFF0C;&#x5B83;&#x63D0;&#x4F9B;&#x4E86;&#x81EA;&#x5B9A;&#x4E49;&#x89E3;&#x6790;&#x673A;&#x5236;&#xFF0C;&#x8FD9;&#x91CC;&#x53EF;&#x4EE5;&#x53C2;&#x8003;&#x76F8;&#x5173;<a href="http://docs.spring.io/spring/docs/current/spring-framework-reference/html/xml-custom.html#extensible-xml-using" target="_blank" rel="external">Spring&#x6587;&#x6863;</a>&#xFF0C;&#x5927;&#x6982;&#x5206;&#x4E3A;&#x4E09;&#x6B65;&#xFF1A;</p>
+<ol>
+<li>&#x5B9A;&#x4E49;&#x81EA;&#x5DF1;&#x7684;xsd&#x6587;&#x4EF6;&#x3002;</li>
+<li>&#x5728;META-INF&#x4E2D;&#x5206;&#x522B;&#x65B9;&#x5F0F;spring.handlers&#x6587;&#x4EF6;&#x548C;spring.schemas&#x6587;&#x4EF6;&#xFF0C;&#x4E00;&#x4E2A;&#x662F;&#x5177;&#x4F53;&#x7684;&#x89E3;&#x6790;&#x5668;&#x7684;&#x914D;&#x7F6E;&#xFF0C;&#x4E00;&#x4E2A;&#x662F;motan.xsd&#x7684;&#x5177;&#x4F53;&#x8DEF;&#x5F84;&#x3002;</li>
+<li>&#x7EE7;&#x627F;NamespaceHandlerSupport&#x62BD;&#x8C61;&#x7C7B;&#x6216;&#x5B9E;&#x73B0;NamespaceHandler&#x63A5;&#x53E3;&#x5B8C;&#x6210;&#x5177;&#x4F53;&#x89E3;&#x6790;&#x5DE5;&#x4F5C;&#x3002;</li>
+</ol>
+<p>&#x6211;&#x4EEC;&#x8FD9;&#x91CC;&#x4E0D;&#x9700;&#x8981;&#x5173;&#x5FC3;&#x89E3;&#x6790;&#x8FC7;&#x7A0B;&#xFF0C;&#x56E0;&#x4E3A;&#x4ED6;&#x5B9E;&#x5728;&#x4E4F;&#x9648;&#x3002;&#x53EA;&#x9700;&#x8981;&#x77E5;&#x9053;&#x8FD9;&#x4E9B;&#x914D;&#x7F6E;&#x5C06;&#x4F1A;&#x6620;&#x5C04;&#x6210;ServiceConfig&#x5BF9;&#x8C61;(&#x5BF9;&#x5E94;<code>&lt;motan:service&gt;</code>&#x6807;&#x7B7E;)&#x3002;&#x9700;&#x8981;&#x6CE8;&#x610F;&#x7684;&#x662F;&#xFF0C;&#x6BCF;&#x4E2A;&#x4E0D;&#x540C;&#x7684;service&#x6807;&#x7B7E;&#x90FD;&#x4F1A;&#x751F;&#x6210;&#x4E0D;&#x540C;&#x7684;<code>ServiceConfig</code>&#x5BF9;&#x8C61;&#xFF0C;&#x5373;&#x6240;&#x8C13;&#x7684;prototype&#x6A21;&#x5F0F;&#xFF0C;&#x76F8;&#x53CD;&#xFF0C;&#x6709;&#x4E9B;&#x914D;&#x7F6E;&#x4F7F;&#x7528;&#x7684;&#x662F;&#x5355;&#x4F8B;&#xFF0C;&#x6BD4;&#x5982;ProcotolConfig&#x3002;</p>
+<h4 id="&#x670D;&#x52A1;export&#x8FC7;&#x7A0B;"><a href="#&#x670D;&#x52A1;export&#x8FC7;&#x7A0B;" class="headerlink" title="&#x670D;&#x52A1;export&#x8FC7;&#x7A0B;"></a>&#x670D;&#x52A1;export&#x8FC7;&#x7A0B;</h4><p>&#x653E;&#x5728;Spring&#x5BB9;&#x5668;&#x4E2D;&#x7684;bean&#x4E00;&#x5B9A;&#x4F1A;&#x7ECF;&#x8FC7;&#x4E00;&#x4E2A;&#x521D;&#x59CB;&#x5316;&#x8FC7;&#x7A0B;&#xFF0C;ServiceConfig&#x5BF9;&#x8C61;&#x4E5F;&#x4E0D;&#x4F8B;&#x5916;&#xFF0C;&#x4ED6;&#x4F1A;&#x76D1;&#x542C;&#x5E94;&#x7528;&#x4E0A;&#x4E0B;&#x6587;&#x4E8B;&#x4EF6;&#xFF0C;&#x5E76;&#x5F53;&#x6574;&#x4E2A;&#x5BB9;&#x5668;&#x521D;&#x59CB;&#x5316;&#x5B8C;&#x6BD5;&#x540E;&#xFF0C;&#x8C03;&#x7528;<code>export()</code>&#x65B9;&#x6CD5;&#x8FDB;&#x884C;&#x670D;&#x52A1;&#x66B4;&#x9732;&#x3002;export&#x5219;&#x4E3B;&#x8981;&#x505A;&#x4E86;&#x4E00;&#x4E0B;&#x4E24;&#x4EF6;&#x4E8B;&#xFF1A;</p>
+<ol>
+<li>&#x5C06;&#x6211;&#x4EEC;&#x7B2C;&#x4E00;&#x6B65;&#x89E3;&#x6790;&#x751F;&#x6210;&#x7684;&#x914D;&#x7F6E;&#x5B9E;&#x4F53;&#x7C7B;&#x8F6C;&#x6362;&#x6210;URL&#x7C7B;&#xFF08;&#x901A;&#x8FC7;uri&#x5F62;&#x5F0F;&#x6765;&#x8868;&#x793A;&#x914D;&#x7F6E;&#xFF09;</li>
+<li>&#x4EE3;&#x7406;&#x7ED9;<code>ConfigHandler</code>&#xFF0C;&#x5E76;&#x751F;&#x6210;Exporter&#x5BF9;&#x8C61;</li>
+</ol>
+<p>URL&#x5BF9;&#x8C61;&#x662F;&#x6574;&#x4E2A;&#x6846;&#x67B6;&#x7684;&#x6838;&#x5FC3;&#x5BF9;&#x8C61;&#xFF0C;&#x4ED6;&#x4FDD;&#x5B58;&#x4E86;&#x4E00;&#x7CFB;&#x5217;&#x914D;&#x7F6E;&#xFF0C;&#x5206;&#x4E3A;&#x6CE8;&#x518C;URL&#x548C;&#x670D;&#x52A1;URL&#xFF0C;&#x6CE8;&#x518C;URL&#x662F;&#x6307;&#x5230;Registry&#x670D;&#x52A1;&#x7684;&#x5730;&#x5740;&#xFF0C;&#x670D;&#x52A1;URL&#x5219;&#x662F;&#x5177;&#x4F53;&#x4F7F;&#x7528;&#x7684;&#x670D;&#x52A1;&#x4E32;&#x3002;</p>
+<p>&#x6BD4;&#x5982;&#x5728;&#x8FD9;&#x91CC;&#x751F;&#x6210;&#x7684;url&#x5BF9;&#x8C61;&#x662F;&#x6CE8;&#x518C;URL&#xFF1A;</p>
+<blockquote>
+<p>zookeeper://127.0.0.1:2181/com.weibo.api.motan.registry.RegistryService?group=default_rpc</p>
+</blockquote>
+<p>&#x4ED6;&#x8868;&#x793A;&#x4E86;&#x6CE8;&#x518C;&#x4E2D;&#x5FC3;&#x7684;&#x5730;&#x5740;&#xFF0C;path&#x5219;&#x662F;&#x4E0E;zookeeper&#x7684;&#x6811;&#x5F62;&#x7ED3;&#x6784;&#x76F8;&#x5BF9;&#x5E94;&#x3002;URL&#x4E2D;&#x8FD8;&#x5305;&#x542B;&#x4E00;&#x4E2A;parameters&#x7684;HashMap&#xFF0C;&#x4ED6;&#x4FDD;&#x5B58;&#x4E86;<code>&lt;registry&gt;</code>&#x7684;&#x914D;&#x7F6E;&#xFF0C;&#x4EE5;&#x53CA;&#x4E00;&#x4E2A;&#x53EB;&#x505A;embed&#x7684;&#x5C5E;&#x6027;&#xFF0C;embed&#x5219;&#x662F;&#x4FDD;&#x5B58;&#x4E86;&#x670D;&#x52A1;URL&#xFF08;&#x6CE8;&#x610F;&#x4E0E;&#x6CE8;&#x518C;URL&#x533A;&#x522B;&#xFF09;</p>
+<blockquote>
+<p>embed=motan://192.168.122.1:8001/com.weibo.motan.demo.service.MotanDemoService?maxContentLength=1048576&amp;module=motan-demo-rpc&amp;export=demoMotan:8001&amp;maxServerConnection=80000&amp;group=motan-demo-rpc &#x2026;..</p>
+</blockquote>
+<p>&#x6709;&#x4E86;URL&#x914D;&#x7F6E;&#x540E;&#xFF0C;&#x6211;&#x4EEC;&#x5C06;&#x66B4;&#x9732;&#x8FC7;&#x7A0B;&#x4EE3;&#x7406;&#x7ED9;<code>ConfigHandler</code>&#x7C7B;&#x3002;&#x8FD9;&#x4E2A;&#x7C7B;&#x662F;&#x4E00;&#x4E2A;&#x8F85;&#x52A9;&#x7C7B;&#xFF0C;&#x6211;&#x4EEC;&#x4E5F;&#x53EF;&#x4EE5;&#x6210;&#x5B83;&#x4E3A;&#x80F6;&#x6C34;&#x4EE3;&#x7801;&#xFF0C;&#x8FDE;&#x63A5;&#x4E86;&#x914D;&#x7F6E;&#x5C42;&#x548C;&#x534F;&#x8BAE;&#x5C42;&#x3002;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line"><span class="keyword">public</span> &lt;T&gt; <span class="function">Exporter&lt;T&gt; <span class="title">export</span><span class="params">(Class&lt;T&gt; interfaceClass, T ref, List&lt;URL&gt; registryUrls)</span> </span>{</div><div class="line"></div><div class="line">       .....</div><div class="line"></div><div class="line">       <span class="comment">// &#x67E5;&#x627E;&#x534F;&#x8BAE;</span></div><div class="line">       Protocol protocol = <span class="keyword">new</span> ProtocolFilterDecorator(ExtensionLoader.getExtensionLoader(Protocol.class).getExtension(protocolName));</div><div class="line"></div><div class="line">       <span class="comment">//&#x521B;&#x5EFA;provider ref&#x662F;&#x5177;&#x4F53;&#x5B9E;&#x73B0;&#x7C7B;&#xFF0C;serviceUrl&#x5C31;&#x662F;&#x4E0A;&#x6587;&#x7684;&#x670D;&#x52A1;url&#xFF0C;interfaceClass&#x5C31;&#x662F;&#x670D;&#x52A1;&#x63A5;&#x53E3;</span></div><div class="line">       Provider&lt;T&gt; provider = <span class="keyword">new</span> DefaultProvider&lt;T&gt;(ref, serviceUrl, interfaceClass);</div><div class="line"></div><div class="line">       <span class="comment">//&#x66B4;&#x9732;&#x8FC7;&#x7A0B;&#x4EE3;&#x7406;&#x7ED9;&#x5177;&#x4F53;&#x534F;&#x8BAE;&#xFF0C;Exporter&#x662F;&#x4E00;&#x6B21;&#x66B4;&#x9732;&#x7684;&#x6838;&#x5FC3;&#x63A5;&#x53E3;</span></div><div class="line">       Exporter&lt;T&gt; exporter = protocol.export(provider, serviceUrl);</div><div class="line"></div><div class="line">       <span class="comment">//&#x6CE8;&#x518C;&#x670D;&#x52A1;&#xFF0C;&#x66B4;&#x9732;&#x4E4B;&#x540E;&#x5728;&#x6CE8;&#x518C;&#x5230;zk&#x4E0A;</span></div><div class="line">       register(registryUrls, serviceUrl);</div><div class="line"></div><div class="line">       <span class="keyword">return</span> exporter;</div><div class="line">   }</div></pre></td></tr></table></figure>
+<p>&#x53EF;&#x4EE5;&#x770B;&#x5230;&#x4E0A;&#x8FF0;&#x8FC7;&#x7A0B;&#x662F;&#x5148;&#x8FDB;&#x884C;&#x670D;&#x52A1;&#x66B4;&#x9732;&#xFF0C;&#x7136;&#x540E;&#x518D;&#x6CE8;&#x518C;&#x5230;&#x4E2D;&#x5FC3;&#xFF0C;&#x901A;&#x77E5;refer&#x7AEF;&#x3002;&#x539F;&#x56E0;&#x5F88;&#x660E;&#x663E;&#xFF0C;&#x5982;&#x679C;&#x5148;&#x901A;&#x77E5;&#x4E0A;&#x7EBF;&#xFF0C;&#x8FD9;&#x4E2A;&#x65F6;&#x5019;&#x670D;&#x52A1;&#x5E76;&#x6CA1;&#x6709;&#x66B4;&#x9732;&#x5B8C;&#x6BD5;&#xFF0C;refer&#x7AEF;&#x5B9E;&#x9645;&#x4E0A;&#x662F;&#x65E0;&#x6CD5;&#x8C03;&#x7528;&#x7684;&#x3002;&#x53E6;&#x5916;&#xFF0C;&#x66B4;&#x9732;&#x8FC7;&#x7A0B;&#x53C8;&#x4EE3;&#x7406;&#x7ED9;&#x5177;&#x4F53;&#x7684;&#x534F;&#x8BAE;&#x5B9E;&#x73B0;&#xFF0C;&#x8FD9;&#x91CC;&#x4F7F;&#x7528;motan&#x534F;&#x8BAE;&#xFF0C;&#x5373;<code>DefaultRpcProtocol</code>&#x5BF9;&#x8C61;&#xFF08;&#x4E2A;&#x4EBA;&#x89C9;&#x5F97;&#x5E94;&#x8BE5;&#x53EB;&#x505A;MotanProtocol&#xFF09;&#xFF0C;&#x4ED6;&#x5B9E;&#x9645;&#x4E0A;&#x53C8;&#x4EE3;&#x7406;&#x7ED9;&#x4E86;&#x5185;&#x90E8;&#x7C7B;<code>DefaultRpcExporter</code>&#x3002;&#x5728;<code>DefaultRpcExporter</code>&#x7684;&#x7C7B;&#x521D;&#x59CB;&#x5316;&#x4E2D;&#xFF0C;&#x6839;&#x636E;&#x5F53;&#x524D;&#x7CFB;&#x7EDF;&#x7684;SPI&#x914D;&#x7F6E;&#xFF0C;&#x627E;&#x5230;<code>EndpointFactory</code>&#x7684;&#x5B9E;&#x73B0;&#x7C7B;&#xFF0C;&#x5E76;&#x521B;&#x5EFA;&#x4E00;&#x4E2A;Server&#x5BF9;&#x8C61;&#xFF0C;&#x7531;Server&#x5BF9;&#x8C61;&#x7684;<code>server.open()</code>&#x6700;&#x7EC8;&#x5B8C;&#x6210;transport&#x7684;&#x7F51;&#x7EDC;&#x5C42;&#x66B4;&#x9732;&#x3002;</p>
+<h4 id="transport&#x5C42;&#x670D;&#x52A1;&#x66B4;&#x9732;"><a href="#transport&#x5C42;&#x670D;&#x52A1;&#x66B4;&#x9732;" class="headerlink" title="transport&#x5C42;&#x670D;&#x52A1;&#x66B4;&#x9732;"></a>transport&#x5C42;&#x670D;&#x52A1;&#x66B4;&#x9732;</h4><p>motan&#x53EA;&#x5B9E;&#x73B0;&#x4E86;&#x57FA;&#x4E8E;netty&#x7684;transport&#x5C42;&#xFF08;&#x53EF;&#x4EE5;&#x7406;&#x89E3;&#xFF0C;&#x5927;&#x90E8;&#x5206;&#x573A;&#x666F;netty&#x90FD;&#x53EF;&#x4EE5;&#x89E3;&#x51B3;&#xFF09;&#xFF0C;&#x5728;<code>server.open()</code>&#x65B9;&#x6CD5;&#x4E2D;&#xFF0C;&#x53EA;&#x662F;&#x4EC5;&#x4EC5;&#x6839;&#x636E;&#x4E0A;&#x4E0B;&#x6587;&#x4F20;&#x9012;&#x8FC7;&#x6765;&#x7684;&#x53C2;&#x6570;&#x5BF9;bootstrap&#x8FDB;&#x884C;&#x914D;&#x7F6E;&#xFF0C;&#x7136;&#x540E;bind&#x7AEF;&#x53E3;&#xFF0C;&#x5B8C;&#x6210;&#x5BF9;&#x6307;&#x5B9A;&#x7AEF;&#x53E3;&#x7684;&#x76D1;&#x542C;&#x3002;&#x5728;&#x5BF9;bootstrap&#x521D;&#x59CB;&#x5316;&#x7684;&#x65F6;&#x5019;&#x6709;&#x4E24;&#x70B9;&#x53EF;&#x80FD;&#x503C;&#x5F97;&#x6CE8;&#x610F;&#x3002;&#x4E00;&#x662F;&#x6211;&#x4EEC;&#x9700;&#x8981;&#x77E5;&#x9053;&#x4ED6;&#x90FD;&#x6CE8;&#x5165;&#x4E86;&#x54EA;&#x4E9B;pipeline</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line">pipeline.addLast(<span class="string">&quot;channel_manage&quot;</span>, channelManage);</div><div class="line">pipeline.addLast(<span class="string">&quot;decoder&quot;</span>, <span class="keyword">new</span> NettyDecoder(codec, NettyServer.<span class="keyword">this</span>, maxContentLength));</div><div class="line">pipeline.addLast(<span class="string">&quot;encoder&quot;</span>, <span class="keyword">new</span> NettyEncoder(codec, NettyServer.<span class="keyword">this</span>));</div><div class="line">pipeline.addLast(<span class="string">&quot;handler&quot;</span>, handler);</div></pre></td></tr></table></figure>
+<p>&#x53EF;&#x4EE5;&#x770B;&#x5230;&#xFF0C;<code>decoder/encoder</code>&#x7528;&#x6765;&#x89E3;&#x7801;&#xFF0C;&#x7F16;&#x7801;&#x5177;&#x4F53;&#x534F;&#x8BAE;&#xFF1B;<code>chanelMessage</code>&#x662F;&#x7528;&#x6765;&#x8FDB;&#x884C;channel&#x5E76;&#x53D1;&#x8FDE;&#x63A5;&#x6570;&#x9650;&#x5236;&#xFF1B;<code>handler</code>&#x5219;&#x662F;&#x5177;&#x4F53;&#x7684;channel&#x5904;&#x7406;&#x5668;&#xFF0C;&#x7528;&#x4E8E;&#x5904;&#x7406;&#x5FC3;&#x8DF3;&#x5305;&#xFF0C;&#x5BA2;&#x6237;&#x7AEF;&#x4E1A;&#x52A1;&#x8BF7;&#x6C42;&#x548C;&#x6D88;&#x606F;&#x8DEF;&#x7531;&#x3002;</p>
+<p>&#x4E8C;&#x662F;&#x5728;&#x5B9E;&#x9645;&#x5F00;&#x53D1;&#x4E2D;&#xFF0C;&#x7ECF;&#x5E38;&#x662F;&#x591A;&#x4E2A;provider&#x66B4;&#x9732;&#x5728;&#x76F8;&#x540C;&#x7684;&#x7AEF;&#x53E3;&#x53F7;&#x4E0B;&#xFF0C;&#x90A3;&#x4E48;&#x5F53;&#x4E00;&#x4E2A;<code>request</code>&#x6765;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x5177;&#x4F53;&#x4F1A;&#x8DEF;&#x7531;&#x5230;&#x54EA;&#x4E00;&#x4E2A;provider&#x7C7B;&#x5462;&#xFF1F;&#x8FD9;&#x4E2A;&#x8DEF;&#x7531;&#x673A;&#x5236;&#x662F;&#x7531;<code>ProviderMessageRouter</code>&#x5B9E;&#x73B0;&#x7684;&#xFF0C;&#x5B83;&#x7684;&#x5B9E;&#x73B0;&#x601D;&#x8DEF;&#x4E5F;&#x6BD4;&#x8F83;&#x7B80;&#x5355;&#xFF1A;&#x5728;&#x5176;&#x5185;&#x90E8;&#x7EF4;&#x62A4;&#x4E00;&#x4E2A;<code>Map&lt;String, Provider&gt;</code>&#xFF0C;&#x5E76;&#x901A;&#x8FC7;group/interface/version&#x8FDB;&#x884C;key&#x751F;&#x6210;&#xFF0C;&#x4ECE;&#x800C;&#x5BF9;provider&#x8FDB;&#x884C;&#x5B9A;&#x4F4D;&#x3002;&#x56E0;&#x6B64;&#x6211;&#x4EEC;&#x867D;&#x7136;&#x4E00;&#x4E2A;provider&#x7684;&#x5B9E;&#x73B0;&#x7C7B;&#x662F;&#x4E00;&#x6837;&#x7684;&#xFF0C;&#x4F46;&#x662F;&#x4E0D;&#x540C;&#x7684;&#x7EC4;&#x6216;&#x76F8;&#x540C;&#x7EC4;&#x4E0D;&#x540C;&#x7248;&#x672C;&#x4E4B;&#x95F4;&#x4E5F;&#x662F;&#x53EF;&#x4EE5;&#x4E00;&#x8D77;&#x66B4;&#x9732;&#x670D;&#x52A1;&#x7684;&#x3002;</p>
+<p>&#x81F3;&#x6B64;&#xFF0C;&#x6211;&#x4EEC;&#x7684;<code>com.weibo.motan.demo.service.MotanDemoService</code>&#x670D;&#x52A1;&#x5DF2;&#x5728;8002&#x7AEF;&#x53E3;&#x66B4;&#x9732;&#xFF0C;&#x5173;&#x4E8E;&#x670D;&#x52A1;&#x7684;registry&#x6CE8;&#x518C;&#x5B9E;&#x73B0;&#x673A;&#x5236;&#x8BF7;&#x53C2;&#x8003;&#x540E;&#x6587;&#xFF0C;<a href="#registry&#x673A;&#x5236;">registry&#x673A;&#x5236;</a>&#x3002;</p>
+<h3 id="&#x670D;&#x52A1;&#x8C03;&#x7528;&#x8FC7;&#x7A0B;"><a href="#&#x670D;&#x52A1;&#x8C03;&#x7528;&#x8FC7;&#x7A0B;" class="headerlink" title="&#x670D;&#x52A1;&#x8C03;&#x7528;&#x8FC7;&#x7A0B;"></a>&#x670D;&#x52A1;&#x8C03;&#x7528;&#x8FC7;&#x7A0B;</h3><p>&#x5F53;&#x4E00;&#x4E2A;<code>Request</code>&#x5230;&#x8FBE;&#x670D;&#x52A1;&#x7AEF;&#x540E;&#xFF0C;&#x662F;&#x5982;&#x4F55;&#x88AB;&#x8C03;&#x7528;&#x6267;&#x884C;&#x7684;&#x5462;&#xFF1F;&#x6211;&#x4EEC;&#x77E5;&#x9053;ProviderMessageRouter&#x53EF;&#x4EE5;&#x5BF9;<code>Request</code>&#x8FDB;&#x884C;&#x8DEF;&#x7531;&#xFF0C;&#x5F53;netty&#x7684;channel&#x6536;&#x5230;&#x8FD9;&#x4E2A;&#x5B9E;&#x73B0;<code>Request</code>&#x4E4B;&#x540E;&#xFF0C;&#x5C06;&#x4F1A;&#x5B9A;&#x4F4D;&#x5230;&#x5177;&#x4F53;<code>Provider</code>shi&#xFF0C;&#x7136;&#x540E;&#x8C03;&#x7528;<code>provider.call()</code>&#x6267;&#x884C;&#x670D;&#x52A1;&#x3002;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line"><span class="keyword">try</span> {</div><div class="line">    <span class="comment">//&#x76F4;&#x63A5;&#x8C03;&#x7528;call&#x65B9;&#x6CD5;</span></div><div class="line">    <span class="keyword">return</span> provider.call(request);</div><div class="line">} <span class="keyword">catch</span> (Exception e) {</div><div class="line">    <span class="comment">//&#x4EA7;&#x751F;&#x5F02;&#x5E38;&#xFF0C;&#x5C06;&#x4F1A;&#x5C01;&#x88C5;&#x5230;Response&#x4E2D;</span></div><div class="line">    Response response = <span class="keyword">new</span> DefaultResponse();</div><div class="line">    response.setException(<span class="keyword">new</span> MotanBizException(<span class="string">&quot;provider call process error&quot;</span>, e));</div><div class="line">    <span class="keyword">return</span> response;</div><div class="line">}</div></pre></td></tr></table></figure>
+<p>DefaultProvider&#x662F;Provider&#x7684;&#x9ED8;&#x8BA4;&#x5B9E;&#x73B0;&#xFF0C;&#x5176;&#x4E2D;&#x7684;<code>defaultProvider.invoke()</code>&#x6267;&#x884C;&#x771F;&#x6B63;&#x7684;&#x8C03;&#x7528;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line"><span class="function"><span class="keyword">public</span> Response <span class="title">invoke</span><span class="params">(Request request)</span> </span>{</div><div class="line">        DefaultResponse response = <span class="keyword">new</span> DefaultResponse();</div><div class="line">        Method method = lookup(request);</div><div class="line"></div><div class="line">        ....</div><div class="line"></div><div class="line">        <span class="keyword">try</span> {</div><div class="line">            <span class="comment">//&#x53CD;&#x5C04;&#x8C03;&#x7528;&#xFF0C;proxyImpl&#x5C31;&#x662F;spring&#x4E0A;&#x4E0B;&#x6587;&#x4E2D;&#x5177;&#x4F53;&#x5B9E;&#x73B0;&#x7684;Service</span></div><div class="line">            Object value = method.invoke(proxyImpl, request.getArguments());</div><div class="line">            <span class="comment">//&#x8BBE;&#x7F6E;&#x8FD4;&#x56DE;&#x503C;</span></div><div class="line">            response.setValue(value);</div><div class="line">        } <span class="keyword">catch</span> (Exception e) {</div><div class="line">            ...</div><div class="line">        } <span class="keyword">catch</span> (Throwable t) {</div><div class="line">            ...</div><div class="line">        }</div><div class="line">        <span class="comment">// &#x4F20;&#x9012;rpc&#x7248;&#x672C;&#x548C;attachment&#x4FE1;&#x606F;&#x65B9;&#x4FBF;&#x4E0D;&#x540C;rpc&#x7248;&#x672C;&#x7684;codec&#x4F7F;&#x7528;&#x3002;</span></div><div class="line">        response.setRpcProtocolVersion(request.getRpcProtocolVersion());</div><div class="line">        response.setAttachments(request.getAttachments());</div><div class="line">        <span class="keyword">return</span> response;</div><div class="line">    }</div></pre></td></tr></table></figure>
+<p>&#x4EE5;&#x4E0A;&#x4EE3;&#x7801;&#x7684;&#x6267;&#x884C;&#x5B9E;&#x9645;&#x4E0A;&#x662F;&#x5728;bootstrap&#x521D;&#x59CB;&#x5316;&#x7684;&#x5DE5;&#x4F5C;&#x7EBF;&#x7A0B;&#x6C60;&#x4E2D;&#x6267;&#x884C;&#x7684;&#xFF0C;&#x8BE5;&#x7EBF;&#x7A0B;&#x6C60;&#x5E76;&#x6CA1;&#x6709;&#x91C7;&#x7528;JCU&#x4E2D;&#x7684;&#x7EBF;&#x7A0B;&#x6C60;&#xFF0C;&#x800C;&#x662F;&#x4F7F;&#x7528;&#x4E86;<code>StandardThreadExecutor</code>&#xFF0C;&#x8FD9;&#x4E2A;&#x7EBF;&#x7A0B;&#x6C60;&#x662F;tomcat&#x6240;&#x4F7F;&#x7528;&#x7684;&#x7EBF;&#x7A0B;&#x6C60;&#x3002;jCU&#x4E2D;&#x7684;&#x7EBF;&#x7A0B;&#x6C60;&#x5F53;&#x7EBF;&#x7A0B;&#x6570;&#x8D85;&#x8FC7;core&#x7684;&#x65F6;&#x5019;&#x4F1A;&#x653E;&#x5230;&#x961F;&#x5217;&#xFF0C;&#x961F;&#x5217;&#x6EE1;&#x4E86;&#x4E4B;&#x540E;&#xFF0C;&#x5728;&#x7EE7;&#x7EED;&#x63D0;&#x9AD8;&#x5230;max&#xFF0C;&#x7136;&#x540E;&#x5728;&#x6267;&#x884C;reject&#x7B56;&#x7565;&#xFF0C;&#x8FD9;&#x4E2A;&#x6BD4;&#x8F83;&#x9002;&#x5408;&#x4E8E;CPU&#x5BC6;&#x96C6;&#x578B;&#x4EFB;&#x52A1;&#x3002;<code>StandardThreadExecutor</code>&#x5219;&#x5F53;&#x5230;&#x8FBE;max&#x7684;&#x65F6;&#x5019;&#x518D;&#x653E;&#x5165;&#x961F;&#x5217;&#xFF0C;&#x961F;&#x5217;&#x6EE1;&#x4E86;&#x4E4B;&#x540E;&#x518D;&#x6267;&#x884C;reject&#x7B56;&#x7565;&#xFF0C;&#x8FD9;&#x6BD4;&#x8F83;&#x9002;&#x5408;&#x5904;&#x7406;&#x7F51;&#x7EDC;&#x8BF7;&#x6C42;&#x3002;</p>
+<p>&#x5230;&#x6B64;&#xFF0C;&#x6211;&#x4EEC;&#x77E5;&#x9053;&#x670D;&#x52A1;&#x7AEF;&#x7684;&#x5177;&#x4F53;&#x8C03;&#x7528;&#x4E5F;&#x4EC5;&#x4EC5;&#x662F;<code>Method.invode()</code>&#x800C;&#x5DF2;&#xFF0C;&#x5E76;&#x6CA1;&#x6709;&#x4EC0;&#x4E48;&#x592A;&#x5927;&#x7684;&#x79D8;&#x5BC6;&#x3002; &#x5230;&#x76EE;&#x524D;&#x4E3A;&#x6B62;&#x6211;&#x4EEC;&#x5DF2;&#x7ECF;&#x8FFD;&#x8E2A;&#x4E86;&#x670D;&#x52A1;&#x7AEF;&#x7684;&#x4E24;&#x4E2A;&#x91CD;&#x8981;&#x8FC7;&#x7A0B;&#xFF1A;<code>&#x670D;&#x52A1;&#x66B4;&#x9732;</code>&#x548C;<code>&#x670D;&#x52A1;&#x8C03;&#x7528;</code>&#x3002;&#x5982;&#x679C;&#x4E0D;&#x914D;&#x5408;&#x76F8;&#x5173;&#x6E90;&#x7801;&#x7684;&#x9605;&#x8BFB;&#xFF0C;&#x53EF;&#x80FD;&#x4F1A;&#x89C9;&#x5F97;&#x6709;&#x4E9B;&#x67AF;&#x71E5;&#xFF0C;&#x5728;&#x8FD9;&#x914D;&#x4E00;&#x5F20;&#x8BF4;&#x660E;&#x56FE;&#x7247;&#x3002;</p>
+<p><img src="/motan-rpc-impl/motan_server_invoke.png" alt="server&#x6838;&#x5FC3;&#x62BD;&#x8C61;"></p>
+<h2 id="refer&#x7AEF;"><a href="#refer&#x7AEF;" class="headerlink" title="refer&#x7AEF;"></a>refer&#x7AEF;</h2><h3 id="&#x521D;&#x59CB;&#x5316;&#x8FC7;&#x7A0B;"><a href="#&#x521D;&#x59CB;&#x5316;&#x8FC7;&#x7A0B;-1" class="headerlink" title="&#x521D;&#x59CB;&#x5316;&#x8FC7;&#x7A0B;"></a>&#x521D;&#x59CB;&#x5316;&#x8FC7;&#x7A0B;</h3><p>&#x8FD8;&#x662F;&#x8BF7;&#x5148;&#x770B;&#x4E0B;&#x9762;&#x7684;xml&#x914D;&#x7F6E;</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><div class="line"><span class="tag">&lt;<span class="name">motan:registry</span> <span class="attr">regProtocol</span>=<span class="string">&quot;zookeeper&quot;</span> <span class="attr">name</span>=<span class="string">&quot;registry&quot;</span> <span class="attr">address</span>=<span class="string">&quot;127.0.0.1:2181&quot;</span>/&gt;</span></div><div class="line"></div><div class="line"><span class="tag">&lt;<span class="name">motan:protocol</span> <span class="attr">default</span>=<span class="string">&quot;true&quot;</span> <span class="attr">name</span>=<span class="string">&quot;motan&quot;</span></span></div><div class="line">                <span class="attr">haStrategy</span>=<span class="string">&quot;failover&quot;</span></div><div class="line">                <span class="attr">loadbalance</span>=<span class="string">&quot;roundrobin&quot;</span>/&gt;</div><div class="line"></div><div class="line"><span class="tag">&lt;<span class="name">motan:basicReferer</span> <span class="attr">group</span>=<span class="string">&quot;motan-demo-rpc&quot;</span></span></div><div class="line">                    <span class="attr">protocol</span>=<span class="string">&quot;motan&quot;</span></div><div class="line">                    <span class="attr">registry</span>=<span class="string">&quot;registry&quot;</span>/&gt;</div><div class="line"></div><div class="line"><span class="tag">&lt;<span class="name">motan:referer</span> <span class="attr">id</span>=<span class="string">&quot;motanDemoReferer&quot;</span></span></div><div class="line">               <span class="attr">interface</span>=<span class="string">&quot;com.weibo.motan.demo.service.MotanDemoService&quot;</span></div><div class="line">               <span class="attr">basicReferer</span>=<span class="string">&quot;motantestClientBasicConfig&quot;</span>/&gt;</div></pre></td></tr></table></figure>
+<p>&#x5BA2;&#x6237;&#x7AEF;&#x8C03;&#x7528;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line">MotanDemoService service = (MotanDemoService) ctx.getBean(<span class="string">&quot;motanDemoReferer&quot;</span>);</div><div class="line">System.out.println(service.hello(<span class="string">&quot;motan&quot;</span>));</div></pre></td></tr></table></figure>
+<p>&#x5F88;&#x7B80;&#x5355;&#xFF0C;&#x5C31;&#x662F;&#x8981;&#x8C03;&#x7528;&#x8FDC;&#x7AEF;&#x7684;MotanDemoService&#x670D;&#x52A1;&#x7684;hello&#x65B9;&#x6CD5;&#x3002;&#x90A3;&#x4E48;&#x5177;&#x4F53;&#x5B9E;&#x73B0;&#x8FC7;&#x7A0B;&#x662F;&#x600E;&#x4E48;&#x6837;&#x7684;&#x5462;&#xFF1F;</p>
+<p>&#x9996;&#x5148;&#x4E0E;provider&#x7AEF;&#x4E00;&#x6837;&#xFF0C;&#x914D;&#x7F6E;&#x89E3;&#x6790;&#x4E5F;&#x9700;&#x8981;&#x501F;&#x52A9;spring&#x6846;&#x67B6;&#xFF0C;&#x4F46;&#x7A0D;&#x6709;&#x4E0D;&#x540C;&#xFF0C;refer&#x7AEF;&#x7684;&#x914D;&#x7F6E;&#x662F;&#x6620;&#x5C04;&#x5230;RefererConfigBean&#x4E2D;&#xFF0C;&#x4ED6;&#x662F;&#x4E00;&#x4E2A;<code>FactoryBean</code>&#xFF0C;&#x8FD9;&#x610F;&#x5473;&#x7740;&#x9700;&#x8981;&#x8C03;&#x7528;<code>getObject()</code>&#x83B7;&#x5F97;&#x771F;&#x6B63;&#x7684;&#x5BF9;&#x8C61;&#x3002;&#x4E3A;&#x4EC0;&#x4E48;&#x8981;&#x4F7F;&#x7528;FactoryBean&#x800C;&#x4E0D;&#x662F;&#x50CF;provider&#x7AEF;&#x90A3;&#x6837;&#x76F4;&#x63A5;&#x751F;&#x6210;&#x5BF9;&#x8C61;&#x5462;&#xFF1F;&#x8FD9;&#x662F;&#x56E0;&#x4E3A;&#x6211;&#x4EEC;refer&#x7AEF;&#x53EA;&#x80FD;&#x8C03;&#x7528;&#x63A5;&#x53E3;&#xFF08;&#x6CA1;&#x6709;&#x5B9E;&#x73B0;&#xFF09;&#xFF0C;&#x63A5;&#x53E3;&#x662F;&#x65E0;&#x6CD5;&#x76F4;&#x63A5;&#x4F7F;&#x7528;&#x7684;&#xFF0C;&#x5B83;&#x9700;&#x8981;&#x88AB;&#x52A8;&#x6001;&#x4EE3;&#x7406;&#x8FDB;&#x884C;&#x5C01;&#x88C5;&#xFF0C;&#x4EA7;&#x751F;&#x4EE3;&#x7406;&#x5BF9;&#x8C61;&#xFF0C;&#x518D;&#x628A;&#x4EE3;&#x7406;&#x5BF9;&#x8C61;&#x653E;&#x5165;spring&#x5BB9;&#x5668;&#x3002;&#x56E0;&#x6B64;&#x4F7F;&#x7528;FactoryBean&#x5B9E;&#x9645;&#x4E0A;&#x662F;&#x4E3A;&#x4E86;&#x65B9;&#x4FBF;&#x521B;&#x5EFA;&#x4EE3;&#x7406;&#x5BF9;&#x8C61;&#x3002;</p>
+<p>&#x5728;<code>getObject()</code>&#x4E2D;&#xFF0C;RefererConfigBean&#x4F1A;&#x8C03;&#x7528;&#x5B50;&#x7C7B;RefererConfig&#x7684;<code>initRef()</code>&#x65B9;&#x6CD5;&#xFF0C;&#x4ECE;&#x800C;&#x5F00;&#x542F;&#x4E86;&#x5BA2;&#x6237;&#x7AEF;&#x521D;&#x59CB;&#x5316;&#x8FC7;&#x7A0B;&#x3002;</p>
+<h4 id="cluster&#x521D;&#x59CB;&#x5316;"><a href="#cluster&#x521D;&#x59CB;&#x5316;" class="headerlink" title="cluster&#x521D;&#x59CB;&#x5316;"></a>cluster&#x521D;&#x59CB;&#x5316;</h4><p>&#x4E0A;&#x6587;&#x7684;<code>initRef()</code>&#x4E2D;&#x6700;&#x91CD;&#x8981;&#x7684;&#x5F53;&#x5C5E;Cluster&#x7684;&#x521D;&#x59CB;&#x5316;&#x3002;&#x4EC0;&#x4E48;&#x662F;<code>Cluster</code>?&#x4ED6;&#x5176;&#x5B9E;&#x4EE3;&#x8868;provider&#x670D;&#x52A1;&#x96C6;&#x7FA4;&#xFF0C;&#x6BCF;&#x4E00;&#x4E2A;&#x5177;&#x4F53;&#x7684;provider&#x670D;&#x52A1;&#x90FD;&#x88AB;&#x62BD;&#x8C61;&#x6210;&#x4E00;&#x4E2A;Referer&#x63A5;&#x53E3;&#xFF0C;&#x8FD9;&#x4E2A;&#x63A5;&#x53E3;&#x4E0E;&#x5BA2;&#x6237;&#x7AEF;&#x7684;Exporter&#x76F8;&#x5BF9;&#x5E94;&#x3002;&#x56E0;&#x6B64;&#xFF0C;Cluster&#x7684;&#x672C;&#x8D28;&#x662F;<code>Referer</code>&#x7684;&#x5BB9;&#x5668;&#xFF0C;&#x5E76;&#x4E14;&#x63D0;&#x4F9B;&#x4E86;&#x8D1F;&#x8F7D;&#x5747;&#x8861;&#x548C;HA&#x670D;&#x52A1;&#xFF08;&#x53C2;&#x8003;&#x4E0B;&#x6587;<a href="#cluster&#x96C6;&#x7FA4;&#x7BA1;&#x7406;">cluster&#x96C6;&#x7FA4;&#x7BA1;&#x7406;</a>&#xFF09;&#x3002;&#x6BCF;&#x4E00;&#x4E2A;Cluster&#x90FD;&#x88AB;ClusterSupport&#x5C01;&#x88C5;&#x8D77;&#x6765;&#xFF0C;&#x4EE5;&#x63D0;&#x4F9B;&#x5BF9;Cluster&#x7684;&#x5237;&#x65B0;&#x673A;&#x5236;&#x548C;&#x751F;&#x547D;&#x5468;&#x671F;&#x7BA1;&#x7406;&#x3002;&#x4E00;&#x4E2A;RefererConfig&#x53EA;&#x4F1A;&#x5BF9;&#x5E94;&#x4E00;&#x4E2A;Cluster&#x548C;&#x4E00;&#x4E2A;ClusterSupport&#x3002;</p>
+<h4 id="&#x670D;&#x52A1;&#x53D1;&#x73B0;&#x4E0E;&#x5237;&#x65B0;"><a href="#&#x670D;&#x52A1;&#x53D1;&#x73B0;&#x4E0E;&#x5237;&#x65B0;" class="headerlink" title="&#x670D;&#x52A1;&#x53D1;&#x73B0;&#x4E0E;&#x5237;&#x65B0;"></a>&#x670D;&#x52A1;&#x53D1;&#x73B0;&#x4E0E;&#x5237;&#x65B0;</h4><p>&#x5F53;Cluster&#x521D;&#x59CB;&#x5316;&#x5B8C;&#x6BD5;&#x540E;&#xFF0C;&#x5C06;&#x4F1A;&#x8C03;&#x7528;<code>registry.subscribe(subUrl, this);</code>&#x5B8C;&#x6210;&#x670D;&#x52A1;&#x8BA2;&#x9605;&#x3002;&#x6240;&#x8C13;&#x7684;&#x2019;&#x8BA2;&#x9605;&#x2019;&#xFF0C;&#x4E0D;&#x8FC7;&#x662F;&#x4E00;&#x4E2A;&#x903B;&#x8F91;&#x64CD;&#x4F5C;&#xFF0C;&#x4E3B;&#x8981;&#x662F;&#x5C06;&#x5BA2;&#x6237;&#x7AEF;&#x8282;&#x70B9;&#x5199;&#x5230;zk&#x7684;/motan/group/xxxx.xxxx/client/ip/&#x8282;&#x70B9;&#x4E0B;&#x3002;&#x5B9E;&#x9645;&#x4E0A;&#x7684;&#x8BA2;&#x9605;&#x5176;&#x5B9E;&#x662F;&#x901A;&#x8FC7;watch&#x673A;&#x5236;&#x5B9E;&#x73B0;&#x7684;&#xFF08;&#x8BE6;&#x89C1;&#x540E;&#x6587;<a href="#registry&#x673A;&#x5236;">registry&#x673A;&#x5236;</a>&#xFF09;&#xFF0C;&#x5F53;&#x53D1;&#x751F;&#x670D;&#x52A1;&#x53D8;&#x66F4;&#xFF0C;&#x5C06;&#x4F1A;&#x901A;&#x77E5;&#x5BA2;&#x6237;&#x7AEF;&#x5237;&#x65B0;&#x96C6;&#x7FA4;&#x3002;&#x90A3;&#x4E48;&#x5F53;&#x5BA2;&#x6237;&#x7AEF;&#x7B2C;&#x4E00;&#x6B21;&#x542F;&#x52A8;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x4ED6;&#x662F;&#x5982;&#x4F55;&#x611F;&#x77E5;&#x5230;&#x670D;&#x52A1;&#x7AEF;&#x5462;&#xFF1F;&#x5728;&#x5BA2;&#x6237;&#x7AEF;&#x7B2C;&#x4E00;&#x6B21;&#x6267;&#x884C;<code>subscribe</code>&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x5C06;&#x4F1A;&#x8C03;&#x7528;<code>discover()</code>&#xFF0C;&#x7136;&#x540E;&#x8C03;&#x7528;<code>NotifyListener</code>&#xFF08;&#x8FD9;&#x91CC;&#x4F7F;&#x7528;&#x7684;&#x662F;&#x76D1;&#x542C;&#x5668;&#x6A21;&#x5F0F;&#xFF09;&#xFF0C;ClusterSupport&#x5B9E;&#x73B0;&#x4E86;&#x8BE5;&#x63A5;&#x53E3;&#xFF0C;&#x5E76;&#x901A;&#x8FC7;registry&#x56DE;&#x8C03;notify()&#xFF0C;&#x4ECE;&#x800C;&#x80FD;&#x591F;&#x611F;&#x77E5;&#x5230;zk&#x4E2D;&#x6709;&#x54EA;&#x4E9B;&#x5DF2;&#x7ECF;&#x6CE8;&#x518C;&#x7684;&#x670D;&#x52A1;&#x4EE5;&#x53CA;&#x4ED6;&#x4EEC;&#x7684;&#x771F;&#x5B9E;&#x5730;&#x5740;&#x3002;&#x5177;&#x4F53;&#x7684;&#x901A;&#x77E5;&#x8FC7;&#x7A0B;&#x5982;&#x4E0B;&#x4EE3;&#x7801;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line"><span class="meta">@Override</span></div><div class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title">notify</span><span class="params">(URL registryUrl, List&lt;URL&gt; urls)</span> </span>{</div><div class="line">    ....</div><div class="line"></div><div class="line">    <span class="comment">// &#x901A;&#x77E5;&#x90FD;&#x662F;&#x5168;&#x91CF;&#x901A;&#x77E5;&#xFF0C;&#x5728;&#x8BBE;&#x5165;&#x65B0;&#x7684;referer&#x540E;&#xFF0C;cluster&#x5185;&#x90E8;&#x9700;&#x8981;&#x628A;&#x4E0D;&#x518D;&#x4F7F;&#x7528;&#x7684;referer&#x8FDB;&#x884C;&#x56DE;&#x6536;&#xFF0C;&#x907F;&#x514D;&#x8D44;&#x6E90;&#x6CC4;&#x6F0F;</span></div><div class="line"></div><div class="line">    <span class="comment">// &#x5224;&#x65AD;urls&#x4E2D;&#x662F;&#x5426;&#x5305;&#x542B;&#x6743;&#x91CD;&#x4FE1;&#x606F;&#xFF0C;&#x5E76;&#x901A;&#x77E5;loadbalance&#x3002;</span></div><div class="line">    processWeights(urls);</div><div class="line"></div><div class="line">    List&lt;Referer&lt;T&gt;&gt; newReferers = <span class="keyword">new</span> ArrayList&lt;Referer&lt;T&gt;&gt;();</div><div class="line">    <span class="keyword">for</span> (URL u : urls) {</div><div class="line">        <span class="keyword">if</span> (!u.canServe(url)) {</div><div class="line">            <span class="keyword">continue</span>;</div><div class="line">        }</div><div class="line">        Referer&lt;T&gt; referer = getExistingReferer(u, registryReferers.get(registryUrl));</div><div class="line">        <span class="keyword">if</span> (referer == <span class="keyword">null</span>) {</div><div class="line">            <span class="comment">// careful u: serverURL, refererURL&#x7684;&#x914D;&#x7F6E;&#x4F1A;&#x88AB;serverURL&#x7684;&#x914D;&#x7F6E;&#x8986;&#x76D6;</span></div><div class="line">            URL refererURL = u.createCopy();</div><div class="line">            mergeClientConfigs(refererURL);</div><div class="line">            referer = protocol.refer(interfaceClass, refererURL, u);</div><div class="line">        }</div><div class="line">        <span class="keyword">if</span> (referer != <span class="keyword">null</span>) {</div><div class="line">            newReferers.add(referer);</div><div class="line">        }</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="keyword">if</span> (CollectionUtil.isEmpty(newReferers)) {</div><div class="line">        onRegistryEmpty(registryUrl);</div><div class="line">        <span class="keyword">return</span>;</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="comment">// &#x6B64;&#x5904;&#x4E0D;&#x9500;&#x6BC1;referers&#xFF0C;&#x7531;cluster&#x8FDB;&#x884C;&#x9500;&#x6BC1;</span></div><div class="line">    registryReferers.put(registryUrl, newReferers);</div><div class="line">    refreshCluster();</div><div class="line">}</div></pre></td></tr></table></figure>
+<p>&#x901A;&#x8FC7;&#x4E0A;&#x8FF0;&#x4EE3;&#x7801;&#xFF0C;&#x6211;&#x4EEC;&#x80FD;&#x591F;&#x770B;&#x5230;&#x5BA2;&#x6237;&#x7AEF;&#x662F;&#x5982;&#x4F55;&#x5904;&#x7406;zk&#x901A;&#x77E5;&#x7684;&#xFF0C;&#x5B83;&#x4E3B;&#x8981;&#x5C31;&#x662F;&#x6839;&#x636E;&#x65B0;&#x7684;URL&#xFF08;&#x4ECE;zk&#x7AEF;&#x83B7;&#x5F97;&#xFF09;&#x521B;&#x5EFA;Referer&#x5BF9;&#x8C61;&#xFF0C;&#x5E76;&#x4E14;&#x5237;&#x65B0;&#x6574;&#x4E2A;&#x96C6;&#x7FA4;&#x3002;&#x5237;&#x65B0;&#x64CD;&#x4F5C;&#x4E3B;&#x8981;&#x5C06;&#x65B0;&#x7684;Referer&#x52A0;&#x5165;&#x96C6;&#x7FA4;&#xFF0C;&#x5E76;&#x5C06;&#x65E7;&#x7684;Referer&#x5BF9;&#x8C61;&#x91CA;&#x653E;&#x6389;&#x3002;&#x9700;&#x8981;&#x6CE8;&#x610F;&#xFF0C;&#x8FD9;&#x91CC;&#x5E76;&#x6CA1;&#x6709;&#x76F4;&#x63A5;&#x91CA;&#x653E;Referer&#x8D44;&#x6E90;&#xFF0C;&#x800C;&#x662F;&#x91C7;&#x7528;&#x4E86;&#x5EF6;&#x8FDF;&#x673A;&#x5236;&#xFF0C;&#x4E3B;&#x8981;&#x8003;&#x8651;&#x5230;Referer&#x53EF;&#x80FD;&#x6B63;&#x5728;&#x6267;&#x884C;&#x4E2D;&#xFF0C;&#x9A6C;&#x4E0A;&#x9500;&#x6BC1;&#x4F1A;&#x5F71;&#x54CD;&#x6B63;&#x5E38;&#x8BF7;&#x6C42;&#x3002;&#x9ED8;&#x8BA4;&#x5EF6;&#x8FDF;&#x65F6;&#x95F4;&#x662F;1s&#xFF0C;&#x4E3B;&#x8981;&#x8003;&#x8651;1s&#x4E2D;&#x5BF9;&#x4E1A;&#x52A1;&#x6267;&#x884C;&#x6765;&#x8BF4;&#x65F6;&#x95F4;&#x5DF2;&#x7ECF;&#x591F;&#x957F;&#x4E86;&#x3002;</p>
+<h4 id="&#x52A8;&#x6001;&#x4EE3;&#x7406;"><a href="#&#x52A8;&#x6001;&#x4EE3;&#x7406;" class="headerlink" title="&#x52A8;&#x6001;&#x4EE3;&#x7406;"></a>&#x52A8;&#x6001;&#x4EE3;&#x7406;</h4><p>&#x5F53;Cluster&#x51C6;&#x5907;&#x5B8C;&#x6BD5;&#xFF0C;zk&#x4E2D;&#x4E5F;&#x8BA2;&#x9605;&#x4E86;&#x76F8;&#x5173;&#x670D;&#x52A1;&#x4E4B;&#x540E;&#xFF0C;&#x5269;&#x4E0B;&#x7684;&#x5DE5;&#x4F5C;&#x5C31;&#x53EA;&#x9700;&#x8981;&#x5BF9;&#x63A5;&#x53E3;&#x8FDB;&#x884C;&#x52A8;&#x6001;&#x4EE3;&#x7406;&#x3002;motan&#x4E2D;&#x53EA;&#x63D0;&#x4F9B;&#x4E86;jdk&#x539F;&#x751F;&#x7684;&#x52A8;&#x6001;&#x4EE3;&#x7406;&#x5B9E;&#x73B0;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line"><span class="meta">@SuppressWarnings</span>(<span class="string">&quot;unchecked&quot;</span>)</div><div class="line"><span class="keyword">public</span> &lt;T&gt; <span class="function">T <span class="title">getProxy</span><span class="params">(Class&lt;T&gt; clz, InvocationHandler invocationHandler)</span> </span>{</div><div class="line">    <span class="keyword">return</span> (T) Proxy.newProxyInstance(<span class="keyword">this</span>.getClass().getClassLoader(), <span class="keyword">new</span> Class[] {clz}, invocationHandler);</div><div class="line">}</div></pre></td></tr></table></figure>
+<p>&#x4E0D;&#x8FC7;&#x6211;&#x4EEC;&#x80FD;&#x591F;&#x901A;&#x8FC7;SPI&#x673A;&#x5236;&#x63D0;&#x4F9B;&#x81EA;&#x5DF1;&#x7684;&#x5B9E;&#x73B0;&#x3002;&#x6211;&#x4E2A;&#x4EBA;&#x8BA4;&#x4E3A;&#x641E;&#x90A3;&#x4E48;&#x591A;&#x4E0D;&#x540C;&#x7684;&#x4EE3;&#x7406;&#x5B9E;&#x73B0;&#x65B9;&#x6848;&#x5E76;&#x6CA1;&#x6709;&#x592A;&#x5927;&#x610F;&#x4E49;&#xFF0C;&#x5B9E;&#x9645;&#x5DE5;&#x4F5C;&#x4E2D;&#x57FA;&#x672C;&#x4E5F;&#x53EA;&#x662F;&#x4F7F;&#x7528;&#x4E00;&#x79CD;&#x800C;&#x5DF2;&#x3002;</p>
+<h3 id="&#x8C03;&#x7528;&#x8FC7;&#x7A0B;"><a href="#&#x8C03;&#x7528;&#x8FC7;&#x7A0B;" class="headerlink" title="&#x8C03;&#x7528;&#x8FC7;&#x7A0B;"></a>&#x8C03;&#x7528;&#x8FC7;&#x7A0B;</h3><p>&#x5F53;&#x5BA2;&#x6237;&#x7AEF;&#x521D;&#x59CB;&#x5316;&#x5B8C;&#x6BD5;&#x4E4B;&#x540E;&#xFF0C;&#x6211;&#x4EEC;&#x5C31;&#x80FD;&#x6B63;&#x5E38;&#x4F7F;&#x7528;motan&#x8FDB;&#x884C;&#x65B9;&#x6CD5;&#x8C03;&#x7528;&#x4E86;&#x3002;&#x4ECE;&#x4E0A;&#x6587;&#x6211;&#x4EEC;&#x77E5;&#x9053;&#xFF0C;&#x5BF9;&#x63A5;&#x53E3;&#x7684;&#x8C03;&#x7528;&#xFF0C;&#x5B9E;&#x9645;&#x4E0A;&#x662F;&#x88AB;&#x52A8;&#x6001;&#x4EE3;&#x7406;&#x4E86;&#xFF0C;&#x90A3;&#x4E48;&#x52A8;&#x6001;&#x4EE3;&#x7406;&#x7684;&#x6267;&#x884C;&#x5165;&#x53E3;&#x662F;&#x54EA;&#x91CC;&#x5462;&#xFF1F;<code>RefererInvocationHandler</code>&#x63D0;&#x4F9B;&#x4E86;&#x8FD9;&#x4E2A;&#x5165;&#x53E3;&#x3002;&#x4E3B;&#x8981;&#x5B9E;&#x73B0;&#x5982;&#x4E0B;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line">  <span class="function"><span class="keyword">public</span> Object <span class="title">invoke</span><span class="params">(Object proxy, Method method, Object[] args)</span> <span class="keyword">throws</span> Throwable </span>{</div><div class="line"></div><div class="line">  <span class="comment">//&#x521B;&#x5EFA;&#x4E00;&#x4E2A;request&#xFF0C;&#x8FD9;&#x4E2A;request&#x4E2D;&#x7684;&#x53C2;&#x6570;&#x5C06;&#x4F1A;&#x88AB;&#x5E8F;&#x5217;&#x5316;</span></div><div class="line">  DefaultRequest request = <span class="keyword">new</span> DefaultRequest();</div><div class="line"></div><div class="line">  <span class="comment">//&#x8BBE;&#x7F6E;request&#x53C2;&#x6570;</span></div><div class="line">  request.setRequestId(RequestIdGenerator.getRequestId());</div><div class="line">  request.setArguments(args);</div><div class="line">  request.setMethodName(method.getName());</div><div class="line">  request.setParamtersDesc(ReflectUtil.getMethodParamDesc(method));</div><div class="line">  request.setInterfaceName(clz.getName());</div><div class="line">  request.setAttachment(URLParamType.requestIdFromClient.getName(), String.valueOf(RequestIdGenerator.getRequestIdFromClient()));</div><div class="line"></div><div class="line">  <span class="comment">// &#x5F53; referer&#x914D;&#x7F6E;&#x591A;&#x4E2A;protocol&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x6BD4;&#x5982;A,B,C&#xFF0C;</span></div><div class="line">  <span class="comment">// &#x90A3;&#x4E48;&#x6B63;&#x5E38;&#x60C5;&#x51B5;&#x4E0B;&#x53EA;&#x4F1A;&#x4F7F;&#x7528;A&#xFF0C;&#x5982;&#x679C;A&#x88AB;&#x5F00;&#x5173;&#x964D;&#x7EA7;&#xFF0C;&#x90A3;&#x4E48;&#x5C31;&#x4F1A;&#x4F7F;&#x7528;B&#xFF0C;B&#x4E5F;&#x88AB;&#x964D;&#x7EA7;&#xFF0C;&#x90A3;&#x4E48;&#x4F1A;&#x4F7F;&#x7528;C</span></div><div class="line">  <span class="keyword">for</span> (Cluster&lt;T&gt; cluster : clusters) {</div><div class="line">      String protocolSwitcher = MotanConstants.PROTOCOL_SWITCHER_PREFIX + cluster.getUrl().getProtocol();</div><div class="line"></div><div class="line">      Switcher switcher = switcherService.getSwitcher(protocolSwitcher);</div><div class="line"></div><div class="line">      <span class="comment">//&#x964D;&#x7EA7;&#x5F00;&#x5173;</span></div><div class="line">      <span class="keyword">if</span> (switcher != <span class="keyword">null</span> &amp;&amp; !switcher.isOn()) {</div><div class="line">          <span class="keyword">continue</span>;</div><div class="line">      }</div><div class="line"></div><div class="line">      .....</div><div class="line"></div><div class="line">      <span class="keyword">try</span> {</div><div class="line">          <span class="comment">//&#x771F;&#x6B63;&#x7684;&#x6267;&#x884C;&#x5165;&#x53E3;</span></div><div class="line">          response = cluster.call(request);</div><div class="line">          <span class="keyword">return</span> response.getValue();</div><div class="line">      } <span class="keyword">catch</span> (RuntimeException e) {</div><div class="line">          <span class="comment">//&#x5F02;&#x5E38;&#x5904;&#x7406;</span></div><div class="line">          .....</div><div class="line">      }</div><div class="line">  }</div><div class="line"></div><div class="line">  .....</div><div class="line">}</div></pre></td></tr></table></figure>
+<p>&#x53EF;&#x4EE5;&#x770B;&#x5230;&#x6574;&#x4E2A;&#x4EE3;&#x7406;&#x8FC7;&#x7A0B;&#x5B9E;&#x9645;&#x4E0A;&#x662F;&#x6267;&#x884C;&#x4E86;&#x4EE5;&#x4E0B;&#x51E0;&#x4E2A;&#x6B65;&#x9AA4;&#xFF1A;</p>
+<ol>
+<li>&#x521B;&#x5EFA;&#x548C;&#x8BBE;&#x7F6E;Request&#x5BF9;&#x8C61;</li>
+<li>&#x4EE3;&#x7406;&#x7ED9;Cluster</li>
+<li>&#x5904;&#x7406;&#x5F02;&#x5E38;</li>
+</ol>
+<p>&#x521B;&#x5EFA;request&#x5BF9;&#x8C61;&#x6CA1;&#x6709;&#x4EC0;&#x4E48;&#x597D;&#x8BF4;&#x7684;&#x3002;<code>Cluster.call()</code>&#x5B9E;&#x9645;&#x4E0A;&#x662F;&#x91CD;&#x5934;&#x620F;&#xFF0C;&#x4ED6;&#x5728;&#x65B9;&#x6CD5;&#x6267;&#x884C;&#x5185;&#x90E8;&#x4EE3;&#x7406;&#x7ED9;&#x4E86;<code>haStrategy.call()</code>&#xFF0C;&#x7136;&#x540E;ha&#x7B56;&#x7565;&#x4F7F;&#x7528;<code>LoadBalance</code>&#x9009;&#x62E9;&#x4E00;&#x4E2A;&#x6216;&#x4E00;&#x6279;Referer&#x5BF9;&#x8C61;&#xFF0C;&#x5E76;&#x6839;&#x636E;&#x5177;&#x4F53;&#x7B56;&#x7565;&#x8C03;&#x7528;&#x8FD9;&#x4E2A;Referer&#x7684;<code>call()</code>&#x65B9;&#x6CD5;&#x3002;Referer&#x63A5;&#x53E3;&#x5728;motan&#x534F;&#x8BAE;&#x7684;&#x9ED8;&#x8BA4;&#x5B9E;&#x73B0;&#x662F;DefaultRpcReferer&#xFF0C;&#x4ED6;&#x5728;&#x521D;&#x59CB;&#x5316;&#x7684;&#x65F6;&#x5019;&#x901A;&#x8FC7;EndpointFactory&#x521B;&#x5EFA;&#x4E86;&#x4E00;&#x4E2A;<code>Client</code>&#x5BF9;&#x8C61;&#xFF0C;&#x4ED6;&#x5176;&#x5B9E;&#x5C31;&#x662F;<code>NettyClient</code>&#xFF0C;&#x7136;&#x540E;&#x8C03;&#x7528;<code>client.request()</code>&#xFF0C;&#x4ECE;&#x800C;&#x4F7F;rpc&#x8BF7;&#x6C42;&#x987A;&#x5229;&#x8FDB;&#x5165;&#x4E86;transport&#x5C42;&#x3002;</p>
+<p>&#x5728;transport&#x5C42;&#xFF0C;NettyClient&#x901A;&#x8FC7;&#x4F7F;&#x7528;commons-pool&#x7EF4;&#x62A4;&#x4E86;&#x4E00;&#x4E2A;&#x957F;&#x8FDE;&#x63A5;&#x7F13;&#x5B58;&#xFF0C;&#x6BCF;&#x6B21;&#x8C03;&#x7528;&#x90FD;&#x901A;&#x8FC7;&#x8FDE;&#x63A5;&#x6C60;&#x83B7;&#x5F97;Channel&#x5BF9;&#x8C61;&#x3002;&#x8C03;&#x7528;&#x4E4B;&#x540E;&#xFF0C;&#x518D;&#x653E;&#x56DE;&#x7F13;&#x5B58;&#x6C60;&#x3002;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line">Channel channel = <span class="keyword">null</span>;</div><div class="line"></div><div class="line">Response response = <span class="keyword">null</span>;</div><div class="line"></div><div class="line"><span class="keyword">try</span> {</div><div class="line">    <span class="comment">// &#x62FF;&#x4E00;&#x4E2A;&#x8FDE;&#x63A5;</span></div><div class="line">    channel = borrowObject();</div><div class="line"></div><div class="line">....</div><div class="line"></div><div class="line">    <span class="comment">// &#x6267;&#x884C;&#x5F02;&#x6B65;&#x8C03;&#x7528;</span></div><div class="line">    response = channel.request(request);</div><div class="line">    <span class="comment">// &#x8FD4;&#x56DE;&#x8FDE;&#x63A5;</span></div><div class="line">    returnObject(channel);</div><div class="line">} <span class="keyword">catch</span> (Exception e) {</div><div class="line">    .....</div><div class="line">}</div><div class="line"></div><div class="line"><span class="comment">// &#x5982;&#x679C;&#x662F;&#x5F02;&#x6B65;&#x8C03;&#x7528;&#x76F4;&#x63A5;&#x8FD4;&#x56DE;response&#xFF0C;&#x5982;&#x679C;&#x4E0D;&#x662F;&#x5C31;&#x5305;&#x88C5;&#x5230;DefaultResponse&#xFF0C;&#x5728;</span></div><div class="line"><span class="comment">// getValue()&#x7684;&#x65F6;&#x5019;&#x4F1A;&#x8FDB;&#x884C;&#x963B;&#x585E;</span></div><div class="line">response = asyncResponse(response, async);</div><div class="line"></div><div class="line"><span class="keyword">return</span> response;</div></pre></td></tr></table></figure>
+<p>&#x5728;<code>channel.request(request)</code> &#x4E2D;&#xFF0C;&#x4F1A;&#x5C06;Request&#x5199;&#x5165;&#x5230;netty&#x7684;channel&#x4E2D;&#xFF0C;<code>ChannelFuture writeFuture = this.channel.write(request);</code>&#xFF0C;&#x4E4B;&#x540E;&#x8FDB;&#x884C;&#x5E8F;&#x5217;&#x5316;&#xFF0C;&#x7136;&#x540E;&#x771F;&#x6B63;&#x7684;&#x6267;&#x884C;socket write&#x9001;&#x5230;&#x5185;&#x6838;&#x534F;&#x8BAE;&#x6808;&#xFF0C;&#x957F;&#x9014;&#x6F2B;&#x6F2B;&#x540E;&#xFF0C;&#x5230;&#x8FBE;&#x670D;&#x52A1;&#x7AEF;&#x3002;</p>
+<p>&#x4EE5;&#x4E0A;&#x5C31;&#x662F;&#x5BA2;&#x6237;&#x7AEF;&#x7684;&#x521D;&#x59CB;&#x5316;&#x8FC7;&#x7A0B;&#x4EE5;&#x53CA;&#x65B9;&#x6CD5;&#x8C03;&#x7528;&#x8FC7;&#x7A0B;&#xFF0C;&#x4E3A;&#x4E86;&#x4FBF;&#x4E8E;&#x7406;&#x89E3;&#xFF0C;&#x53EF;&#x4EE5;&#x53C2;&#x8003;&#x4E0B;&#x56FE;&#xFF1A;</p>
+<p><img src="/motan-rpc-impl/motan_client_invoke.png" alt="motan_client_invoke"></p>
+<h1 id="&#x6838;&#x5FC3;&#x673A;&#x5236;&#x7684;&#x5B9E;&#x73B0;"><a href="#&#x6838;&#x5FC3;&#x673A;&#x5236;&#x7684;&#x5B9E;&#x73B0;" class="headerlink" title="&#x6838;&#x5FC3;&#x673A;&#x5236;&#x7684;&#x5B9E;&#x73B0;"></a>&#x6838;&#x5FC3;&#x673A;&#x5236;&#x7684;&#x5B9E;&#x73B0;</h1><h2 id="cluster&#x96C6;&#x7FA4;&#x7BA1;&#x7406;"><a href="#cluster&#x96C6;&#x7FA4;&#x7BA1;&#x7406;" class="headerlink" title="cluster&#x96C6;&#x7FA4;&#x7BA1;&#x7406;"></a>cluster&#x96C6;&#x7FA4;&#x7BA1;&#x7406;</h2><p>&#x6211;&#x4EEC;&#x4E0A;&#x6587;&#x8BF4;&#x8FC7;&#xFF0C;&#x5728;&#x5BA2;&#x6237;&#x7AEF;&#x65B9;&#x6CD5;&#x8C03;&#x7528;&#x94FE;&#x4E2D;&#xFF0C;<code>Cluster.call()</code>&#x7528;&#x4E8E;&#x4FDD;&#x8BC1;&#x9AD8;&#x53EF;&#x7528;&#xFF0C;&#x5E76;&#x80FD;&#x591F;&#x8FDB;&#x884C;&#x8F6F;&#x8D1F;&#x8F7D;&#x5747;&#x8861;&#x3002;&#x4E0A;&#x6587;&#x8BF4;&#x8FC7;&#xFF0C;Cluster&#x7684;&#x672C;&#x8D28;&#x662F;Referer&#x5BF9;&#x8C61;&#x7684;&#x5BB9;&#x5668;&#x3002;&#x89C1;&#x4E0B;&#x56FE;&#xFF1A;</p>
+<p><img src="/motan-rpc-impl/motan_cluster.png" alt="motain_cluster"></p>
+<p>HaStrategy&#x7B56;&#x7565;&#x63A5;&#x53E3;&#x8C03;&#x7528;&#x8D1F;&#x8F7D;&#x5747;&#x8861;&#x5668;&#xFF0C;&#x8D1F;&#x8F7D;&#x5747;&#x8861;&#x5668;&#x4ECE;&#x4F17;&#x591A;Referer&#x4E2D;&#x9009;&#x62E9;&#x4E00;&#x4E2A;&#x6216;&#x82E5;&#x5E72;Referer&#xFF0C;&#x5C06;&#x4ED6;&#x4EEC;&#x4EA4;&#x7ED9;HaStrategy&#xFF0C;&#x7136;&#x540E;HaStrategy&#x6839;&#x636E;&#x7279;&#x5B9A;&#x7684;&#x7B56;&#x7565;&#x8FDB;&#x884C;Referer&#x7684;&#x8C03;&#x7528;&#x3002;</p>
+<p>motan&#x652F;&#x6301;&#x7684;HaStrategy&#x53EA;&#x6709;&#x4E24;&#x79CD;&#xFF1A;FailfastHatrategy&#x548C;FailoverStrategy&#xFF08;dubbo&#x6709;&#x5F88;&#x591A;&#x79CD;&#x5B9E;&#x73B0;&#x6BD4;&#x5982;failsafe&#xFF0C;failback&#x7B49;&#xFF09;&#xFF0C;failfast&#x5F88;&#x5BB9;&#x6613;&#x7406;&#x89E3;&#xFF0C;&#x5982;&#x679C;&#x51FA;&#x9519;&#x9A6C;&#x4E0A;&#x629B;&#x51FA;&#x5F02;&#x5E38;&#xFF0C;&#x5FEB;&#x901F;&#x5931;&#x8D25;&#xFF0C;&#x5B9E;&#x73B0;&#x4EE3;&#x7801;&#x4E5F;&#x5F88;&#x7B80;&#x5355;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line"><span class="meta">@Override</span></div><div class="line"><span class="function"><span class="keyword">public</span> Response <span class="title">call</span><span class="params">(Request request, LoadBalance&lt;T&gt; loadBalance)</span> </span>{</div><div class="line">    Referer&lt;T&gt; refer = loadBalance.select(request);</div><div class="line">    <span class="keyword">return</span> refer.call(request);</div><div class="line">}</div></pre></td></tr></table></figure>
+<p>failover&#x7B56;&#x7565;&#x662F;&#x76EE;&#x524D;&#x6700;&#x5E38;&#x7528;&#x7684;&#xFF0C;&#x5176;&#x5B9E;&#x73B0;&#x601D;&#x8DEF;&#x5176;&#x5B9E;&#x4E5F;&#x4E0D;&#x96BE;&#x3002;&#x6211;&#x4EEC;&#x901A;&#x8FC7;&#x8D1F;&#x8F7D;&#x5747;&#x8861;&#x5668;&#x9009;&#x62E9;&#x4E00;&#x7EC4;Referer&#xFF08;&#x9009;&#x62E9;&#x7B97;&#x6CD5;&#x6839;&#x636E;&#x4E0D;&#x540C;LB&#x6709;&#x4E0D;&#x540C;&#x5B9E;&#x73B0;&#xFF09;&#xFF0C;&#x7136;&#x540E;&#x53EA;&#x8C03;&#x7528;&#x7B2C;&#x4E00;&#x4E2A;&#xFF0C;&#x5F53;&#x51FA;&#x73B0;&#x9519;&#x8BEF;&#x7684;&#x65F6;&#x5019;&#xFF08;&#x975E;&#x4E1A;&#x52A1;&#x5F02;&#x5E38;&#xFF09;&#xFF0C;&#x6211;&#x4EEC;&#x5C1D;&#x8BD5;&#x8C03;&#x7528;n&#x6B21;&#xFF08;&#x53EF;&#x914D;&#x7F6E;&#xFF09;&#xFF0C;&#x5982;&#x679C;n&#x6B21;&#x90FD;&#x5931;&#x8D25;&#x4E86;&#xFF0C;&#x90A3;&#x4E48;&#x6211;&#x4EEC;&#x5C31;&#x8C03;&#x7528;&#x4E0B;&#x4E00;&#x4E2A;Referer&#xFF0C;&#x5982;&#x679C;&#x8FD9;&#x7EC4;Referer&#x90FD;&#x8C03;&#x7528;&#x5931;&#x8D25;&#xFF0C;&#x5219;&#x629B;&#x51FA;&#x5F02;&#x5E38;&#x3002;</p>
+<p>&#x5173;&#x4E8E;loadbalance&#x7B97;&#x6CD5;&#xFF0C;motan&#x652F;&#x6301;&#x4EE5;&#x4E0B;&#x51E0;&#x79CD;&#xFF1A;</p>
+<ul>
+<li>ActivieWegithLoadBalance&#xFF1A;&#x6700;&#x5C11;&#x5E76;&#x53D1;&#x4F18;&#x5148;&#xFF0C;&#x600E;&#x4E48;&#x8BA1;&#x7B97;&#x5E76;&#x53D1;&#x91CF;&#xFF1F;&#x5F88;&#x7B80;&#x5355;&#xFF0C;&#x901A;&#x8FC7;&#x539F;&#x5B50;&#x8BA1;&#x6570;&#x5668;&#x5373;&#x53EF;&#x3002;</li>
+<li>ConfigurableWeightLoadBalance&#xFF1A;&#x53EF;&#x914D;&#x6743;&#x91CD;&#xFF0C;&#x65E0;&#x591A;&#x8BB2;&#xFF0C;&#x7C7B;&#x4F3C;ng&#x3002;</li>
+<li>ConsistentHashLoadBanlance&#xFF1A;&#x4E00;&#x81F4;&#x6027;hash&#xFF0C;&#x7F51;&#x4E0A;&#x5F88;&#x591A;&#x73B0;&#x6210;&#x7684;&#x5B9E;&#x73B0;&#xFF0C;&#x53EF;&#x4EE5;&#x4F7F;&#x7528;md5&#x914D;&#x5408;TreeMap&#x5B9E;&#x73B0;&#x3002;&#x8FD9;&#x91CC;&#x4F7F;&#x7528;&#x4E86;request.arguments&#x4F5C;&#x4E3A;hash&#x5165;&#x53C2;&#x3002;</li>
+<li>LocalFirstLoadBalacne&#xFF1A;&#x672C;&#x5730;&#x670D;&#x52A1;&#x4F18;&#x5148;&#x3002;</li>
+<li>RandomLoadBalance&#xFF1A;&#x4F7F;&#x7528;math.random()&#x5B9E;&#x73B0;&#x3002;</li>
+<li>RoundRoubinLoadBalance&#xFF1A;&#x4F7F;&#x7528;&#x539F;&#x5B50;&#x8BA1;&#x6570;&#x5668;&#xFF0C;&#x8FDB;&#x884C;id&#x5206;&#x914D;&#xFF0C;&#x5728;&#x914D;&#x5408;&#x53D6;&#x6A21;&#x64CD;&#x4F5C;&#x5373;&#x53EF;&#x3002;&#x6CE8;&#x610F;&#x907F;&#x514D;&#x8D1F;&#x6570;&#xFF0C;&#x53EF;&#x4EE5;&#x505A;0x7fffffff&#x7684;mask&#x3002;</li>
+</ul>
+<h2 id="&#x534F;&#x8BAE;&#x7F16;&#x7801;"><a href="#&#x534F;&#x8BAE;&#x7F16;&#x7801;" class="headerlink" title="&#x534F;&#x8BAE;&#x7F16;&#x7801;"></a>&#x534F;&#x8BAE;&#x7F16;&#x7801;</h2><p>&#x4E00;&#x822C;RPC&#x6846;&#x67B6;&#x7684;&#x534F;&#x8BAE;&#x7F16;&#x7801;&#x5206;&#x4E3A;&#x4E24;&#x4E2A;&#x90E8;&#x5206;&#xFF0C;&#x5176;&#x4E00;&#x662F;&#x5BF9;<code>&#x534F;&#x8BAE;&#x4F53;</code>&#x7684;&#x5E8F;&#x5217;&#x5316;&#xFF0C;&#x5176;&#x4E8C;&#x662F;&#x5BF9;<code>&#x534F;&#x8BAE;&#x5934;</code>&#x7684;&#x7F16;&#x7801;&#x683C;&#x5F0F;&#x3002;&#x91C7;&#x7528;&#x56FA;&#x5B9A;&#x534F;&#x8BAE;&#x5934;&#x7684;&#x597D;&#x5904;&#x662F;&#x5BB9;&#x6613;&#x5904;&#x7406;tcp&#x7684;&#x7C98;&#x5305;&#x548C;&#x534A;&#x5305;&#x3002;motan&#x7684;&#x534F;&#x8BAE;&#x4F53;&#x9ED8;&#x8BA4;&#x4F7F;&#x7528;&#x7684;&#x5E8F;&#x5217;&#x5316;&#x534F;&#x8BAE;&#x662F;hession&#x6216;json&#xFF0C;&#x540C;&#x6837;&#x6211;&#x4EEC;&#x53EF;&#x4EE5;&#x901A;&#x8FC7;SPI&#x8FDB;&#x884C;&#x6269;&#x5C55;&#x3002;&#x90A3;&#x4E48;&#x90FD;&#x6709;&#x54EA;&#x4E9B;&#x4F1A;&#x88AB;&#x5E8F;&#x5217;&#x5316;&#x6210;&#x534F;&#x8BAE;&#x4F53;&#x5462;&#xFF1F;&#x4E3A;&#x4E86;&#x80FD;&#x591F;&#x5728;&#x670D;&#x52A1;&#x7AEF;&#x8DEF;&#x7531;&#x5230;&#x5177;&#x4F53;&#x5B9E;&#x73B0;&#x7C7B;&#xFF0C;&#x63A5;&#x53E3;&#x540D;+&#x65B9;&#x6CD5;&#x540D;+&#x65B9;&#x6CD5;&#x53C2;&#x6570;+&#x65B9;&#x6CD5;&#x53C2;&#x6570;&#x63CF;&#x8FF0;&#x4EE5;&#x53CA;&#x9644;&#x52A0;&#x4FE1;&#x606F;&#xFF08;&#x6BD4;&#x5982;&#x63A5;&#x53E3;&#x7248;&#x672C;&#x7B49;&#xFF09;&#x4F1A;&#x88AB;&#x5E8F;&#x5217;&#x5316;&#x5230;&#x534F;&#x8BAE;&#x4F53;&#x5F53;&#x4E2D;&#x3002;</p>
+<p>&#x9488;&#x5BF9;&#x534F;&#x8BAE;&#x5934;&#xFF0C;motan&#x7684;&#x5B9E;&#x73B0;&#x4E5F;&#x975E;&#x5E38;&#x7B80;&#x5355;&#x3002;&#x5934;&#x90E8;&#x4E00;&#x5171;16&#x4E2A;&#x5B57;&#x8282;&#xFF1A;</p>
+<table>
+<thead>
+<tr>
+<th>&#x534F;&#x8BAE;&#x4F4D;</th>
+<th>&#x610F;&#x4E49;</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-15 bit</td>
+<td>magic</td>
+</tr>
+<tr>
+<td>16-23 bit</td>
+<td>version</td>
+</tr>
+<tr>
+<td>24-28 bit</td>
+<td>extend flag</td>
+</tr>
+<tr>
+<td>29-30 bit</td>
+<td>event &#x6BD4;&#x5982;normal, exception&#x7B49;</td>
+</tr>
+<tr>
+<td>31 bit</td>
+<td>0 is request , 1 is response</td>
+</tr>
+<tr>
+<td>32-95 bit</td>
+<td>request id</td>
+</tr>
+<tr>
+<td>96-127 bit</td>
+<td>body content length</td>
+</tr>
+</tbody>
+</table>
+<h2 id="switcher&#x673A;&#x5236;"><a href="#switcher&#x673A;&#x5236;" class="headerlink" title="switcher&#x673A;&#x5236;"></a>switcher&#x673A;&#x5236;</h2><p>Switcher&#x5C31;&#x662F;&#x5F00;&#x5173;&#x673A;&#x5236;&#xFF0C;&#x4ED6;&#x63D0;&#x4F9B;&#x4E86;&#x4E00;&#x79CD;&#x964D;&#x7EA7;&#x63A7;&#x5236;&#x80FD;&#x529B;&#x3002;&#x5177;&#x4F53;&#x7684;&#x5B9E;&#x73B0;&#x4E3B;&#x8981;&#x6709;&#x4E00;&#x4E0B;&#x51E0;&#x4E2A;&#x7C7B;&#xFF1A;</p>
+<ol>
+<li>Switcher&#xFF0C;&#x5F00;&#x5173;&#x5B9E;&#x4F53;&#x7C7B;&#xFF0C;&#x7EF4;&#x62A4;&#x4E86;&#x5F00;&#x5173;&#x72B6;&#x6001;</li>
+<li>SwitcherService&#xFF0C;Switcher&#x7684;&#x5BB9;&#x5668;&#xFF0C;&#x63D0;&#x4F9B;&#x6CE8;&#x518C;&#x7B49;&#x7BA1;&#x7406;&#x670D;&#x52A1;</li>
+<li>SwitcherListener&#xFF0C;&#x9488;&#x5BF9;Switcher&#x7684;&#x76D1;&#x542C;&#x5668;&#xFF0C;&#x7528;&#x4E8E;&#x76D1;&#x542C;&#x5F00;&#x5173;&#x53D8;&#x5316;</li>
+<li>LocalSwitcherService&#xFF0C;SwitcherService&#x63A5;&#x53E3;&#x7684;&#x5177;&#x4F53;&#x5B9E;&#x73B0;</li>
+<li>MotanSwitcherUtil&#xFF0C;&#x63D0;&#x4F9B;&#x7ED9;&#x6574;&#x4E2A;&#x6846;&#x67B6;&#x9759;&#x6001;&#x65B9;&#x6CD5;&#xFF0C;&#x4E5F;&#x662F;&#x5F00;&#x5173;&#x670D;&#x52A1;&#x7684;&#x5165;&#x53E3;</li>
+</ol>
+<p>&#x4F7F;&#x7528;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x6211;&#x4EEC;&#x901A;&#x8FC7;<code>MotanSwitcherUtil</code>&#x6CE8;&#x518C;&#x5F00;&#x5173;&#x548C;&#x76D1;&#x542C;&#x5668;&#xFF0C;&#x7136;&#x540E;&#x8C03;&#x7528;<code>SwitcherService.setValue()</code>&#x8BBE;&#x7F6E;&#x5F00;&#x5173;&#x72B6;&#x6001;&#x6216;&#x8005;&#x5F97;&#x5230;<code>SwitcherService.getSwitcher()</code>&#x5F97;&#x5230;&#x5F00;&#x5173;&#x72B6;&#x6001;&#x3002;&#x7136;&#x540E;&#x5C31;&#x53EF;&#x4EE5;&#x5728;&#x9700;&#x8981;&#x4F7F;&#x7528;&#x7684;&#x5730;&#x65B9;&#xFF0C;&#x52A0;&#x4E0A;&#x5224;&#x65AD;&#x5373;&#x53EF;&#x3002;</p>
+<h2 id="spi&#x673A;&#x5236;"><a href="#SPI&#x673A;&#x5236;" class="headerlink" title="SPI&#x673A;&#x5236;"></a>SPI&#x673A;&#x5236;</h2><p>&#x7C7B;&#x4F3C;dubbo&#xFF0C;motan&#x4E5F;&#x4F7F;&#x7528;&#x4E86;&#x6269;&#x5C55;&#x70B9;&#x673A;&#x5236;&#xFF08;SPI&#xFF09;&#xFF0C;&#x4EE5;&#x63D0;&#x4F9B;&#x5BA2;&#x6237;&#x7AEF;&#x52A8;&#x6001;&#x6269;&#x5C55;&#x80FD;&#x529B;&#x3002;&#x4F7F;&#x7528;&#x6BD4;&#x8F83;&#x65B9;&#x4FBF;&#xFF0C;&#x53EA;&#x9700;&#x8981;&#x5728;/META-INF/&#x4E0B;&#x653E;&#x7F6E;&#x4E00;&#x4E2A;&#x6587;&#x672C;&#x6587;&#x4EF6;&#xFF0C;&#x6587;&#x4EF6;&#x540D;&#x5C31;&#x662F;&#x63A5;&#x53E3;&#x540D;&#x6BD4;&#x5982;&#xFF08;com.weibo.api.motan.transport.EndpointFactory&#xFF09;&#xFF0C;&#x6587;&#x4EF6;&#x5185;&#x5BB9;&#x5C31;&#x662F;&#x63A5;&#x53E3;&#x5B9E;&#x73B0;&#x7C7B;&#x5168;&#x8DEF;&#x5F84;&#x6BD4;&#x5982;&#xFF1A;com.weibo.api.motan.transport.netty.NettyEndpointFactory&#x3002;&#x56E0;&#x6B64;&#x6846;&#x67B6;&#x5728;&#x9700;&#x8981;&#x6253;&#x6869;&#x7684;&#x5730;&#x65B9;&#x8C03;&#x7528;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line">endpointFactory =</div><div class="line">        ExtensionLoader</div><div class="line">        .getExtensionLoader(EndpointFactory.class)</div><div class="line">        .getExtension(</div><div class="line">                url.getParameter(URLParamType.endpointFactory.getName(), URLParamType.endpointFactory.getValue())</div><div class="line">        );</div></pre></td></tr></table></figure>
+<p>&#x5373;&#x53EF;&#x5F97;&#x5230;&#x88AB;&#x6CE8;&#x5165;&#x7684;&#x5B9E;&#x73B0;&#x7C7B;&#x3002;&#x771F;&#x662F;&#x600E;&#x4E48;&#x5B9E;&#x73B0;&#x7684;&#x5462;&#xFF1F;&#x5176;&#x4E3B;&#x8981;&#x601D;&#x8DEF;&#x5C31;&#x662F;&#x901A;&#x8FC7;io&#x64CD;&#x4F5C;&#x8BFB;&#x53D6;classpath&#x4E0B;&#x7684;&#x76F8;&#x5E94;&#x6587;&#x4EF6;(/META-INF/xxxx)&#xFF0C;&#x5E76;&#x8FDB;&#x884C;&#x89E3;&#x6790;&#xFF0C;&#x53CD;&#x5C04;&#x5F97;&#x5230;&#x63A5;&#x53E3;&#x7684;&#x5B9E;&#x73B0;&#x7C7B;&#xFF0C;&#x5E76;&#x8C03;&#x7528;newInstance()&#x521B;&#x5EFA;&#x5B9E;&#x4F8B;&#x3002;&#x5982;&#x679C;&#x4ED6;&#x662F;&#x5355;&#x4F8B;&#xFF0C;&#x5C31;&#x5C06;&#x5176;&#x7F13;&#x5B58;&#xFF0C;&#x5982;&#x679C;&#x4E0D;&#x662F;&#x5355;&#x4F8B;&#x5219;&#x65E0;&#x9700;&#x7F13;&#x5B58;&#x76F4;&#x63A5;&#x8FD4;&#x56DE;&#x3002;@SpiMeta&#x6253;&#x5728;&#x63A5;&#x53E3;&#x4E0A;&#xFF0C;&#x7528;&#x6765;&#x6807;&#x8BC6;&#x5176;&#x751F;&#x547D;&#x5468;&#x671F;&#x3002;@Spi&#x6253;&#x5728;&#x5B9E;&#x73B0;&#x7C7B;&#x4E0A;&#xFF0C;&#x901A;&#x8FC7;name&#x5C5E;&#x6027;&#x4F5C;&#x4E3A;&#x552F;&#x4E00;&#x5F15;&#x7528;&#x6807;&#x8BC6;&#xFF0C;&#x5373;&#x53EF;&#x6253;&#x901A;xml&#x7684;&#x914D;&#x7F6E;&#x548C;&#x5177;&#x4F53;&#x7684;&#x5B9E;&#x73B0;&#x3002;</p>
+<h2 id="&#x5BA2;&#x6237;&#x7AEF;&#x5FC3;&#x8DF3;&#x68C0;&#x6D4B;"><a href="#&#x5BA2;&#x6237;&#x7AEF;&#x5FC3;&#x8DF3;&#x68C0;&#x6D4B;" class="headerlink" title="&#x5BA2;&#x6237;&#x7AEF;&#x5FC3;&#x8DF3;&#x68C0;&#x6D4B;"></a>&#x5BA2;&#x6237;&#x7AEF;&#x5FC3;&#x8DF3;&#x68C0;&#x6D4B;</h2><p>&#x5BA2;&#x6237;&#x7AEF;&#x5FC3;&#x8DF3;&#x68C0;&#x6D4B;&#x5C31;&#x662F;&#x5B9A;&#x65F6;&#x68C0;&#x6D4B;&#x670D;&#x52A1;&#x7AEF;&#x662F;&#x5426;&#x53EF;&#x7528;&#x3002;&#x4E3A;&#x4EC0;&#x4E48;&#x8981;&#x6709;&#x5BA2;&#x6237;&#x7AEF;&#x5FC3;&#x8DF3;&#x68C0;&#x6D4B;&#xFF1F;&#x5F88;&#x660E;&#x663E;&#xFF0C;&#x5BF9;&#x4E8E;&#x5BA2;&#x6237;&#x7AEF;&#x6765;&#x8BB2;&#xFF0C;&#x670D;&#x52A1;&#x7AEF;&#x662F;&#x6C38;&#x8FDC;&#x4E0D;&#x53EF;&#x63A7;&#x7684;&#xFF0C;&#x5F53;&#x51FA;&#x73B0;&#x67D0;&#x4E2A;&#x670D;&#x52A1;&#x7AEF;&#x6545;&#x969C;&#xFF0C;&#x5BA2;&#x6237;&#x7AEF;&#x65E0;&#x6CD5;&#x8C03;&#x7528;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x9664;&#x4E86;&#x5C06;&#x8BE5;Referer&#x4ECE;&#x8D1F;&#x8F7D;&#x5747;&#x8861;&#x5668;&#x4E2D;&#x62FF;&#x6389;&#x5916;&#xFF0C;&#x8FD8;&#x8981;&#x5B9A;&#x65F6;&#xFF08;500ms&#xFF09;&#x53D1;&#x9001;&#x5FC3;&#x8DF3;&#x68C0;&#x6D4B;&#x5305;&#xFF0C;&#x4EE5;&#x68C0;&#x6D4B;&#x670D;&#x52A1;&#x7AEF;&#x662F;&#x5426;&#x53EF;&#x7528;&#x3002;&#x5F53;&#x670D;&#x52A1;&#x53C8;&#x53D8;&#x5F97;&#x53EF;&#x7528;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x6211;&#x4EEC;&#x518D;&#x5C06;&#x5176;&#x4E0A;&#x7EBF;&#x3002;&#x5982;&#x4E0B;&#x4EE3;&#x7801;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line">executorService.scheduleWithFixedDelay(<span class="keyword">new</span> Runnable() {</div><div class="line">    <span class="meta">@Override</span></div><div class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>{</div><div class="line"></div><div class="line">        <span class="keyword">for</span> (Map.Entry&lt;Client, HeartbeatFactory&gt; entry : endpoints.entrySet()) {</div><div class="line">            Client endpoint = entry.getKey();</div><div class="line"></div><div class="line">            <span class="keyword">try</span> {</div><div class="line">                <span class="comment">// &#x5982;&#x679C;&#x8282;&#x70B9;&#x662F;&#x5B58;&#x6D3B;&#x72B6;&#x6001;&#xFF0C;&#x90A3;&#x4E48;&#x6CA1;&#x5FC5;&#x8981;&#x8D70;&#x5FC3;&#x8DF3;</span></div><div class="line">                <span class="keyword">if</span> (endpoint.isAvailable()) {</div><div class="line">                    <span class="keyword">continue</span>;</div><div class="line">                }</div><div class="line"></div><div class="line">                HeartbeatFactory factory = entry.getValue();</div><div class="line">                endpoint.heartbeat(factory.createRequest());</div><div class="line">            } <span class="keyword">catch</span> (Exception e) {</div><div class="line">                LoggerUtil.error(<span class="string">&quot;HeartbeatEndpointManager send heartbeat Error: url=&quot;</span> + endpoint.getUrl().getUri(), e);</div><div class="line">            }</div><div class="line">        }</div><div class="line"></div><div class="line">    }</div><div class="line">}, MotanConstants.HEARTBEAT_PERIOD, MotanConstants.HEARTBEAT_PERIOD, TimeUnit.MILLISECONDS);</div></pre></td></tr></table></figure>
+<h2 id="registry&#x673A;&#x5236;"><a href="#Registry&#x673A;&#x5236;" class="headerlink" title="Registry&#x673A;&#x5236;"></a>Registry&#x673A;&#x5236;</h2><p>Registry&#x662F;Broker&#x6A21;&#x5F0F;&#x4E2D;&#x6700;&#x91CD;&#x8981;&#x7684;&#x89D2;&#x8272;&#x4E4B;&#x4E00;&#xFF0C;&#x5728;RPC&#x6846;&#x67B6;&#x4E2D;&#x4ED6;&#x4E3B;&#x8981;&#x63D0;&#x4F9B;&#x4EE5;&#x4E0B;&#x529F;&#x80FD;&#xFF1A;</p>
+<ul>
+<li>&#x670D;&#x52A1;&#x53D1;&#x73B0;&#xFF0C;&#x5BF9;&#x5E94;&#x63A5;&#x53E3;DiscoveryService&#xFF0C;&#x63D0;&#x4F9B;&#x7ED9;&#x5BA2;&#x6237;&#x7AEF;&#xFF0C;&#x4EE5;&#x67E5;&#x8BE2;&#x670D;&#x52A1;&#x7AEF;&#x771F;&#x5B9E;&#x5730;&#x5740;&#x3002;</li>
+<li>&#x670D;&#x52A1;&#x6CE8;&#x518C;&#xFF0C;&#x5BF9;&#x5E94;&#x63A5;&#x53E3;RegistryService&#xFF0C;&#x63D0;&#x4F9B;&#x7ED9;&#x670D;&#x52A1;&#x7AEF;&#xFF0C;&#x4EE5;&#x6CE8;&#x518C;&#x771F;&#x5B9E;&#x5730;&#x5740;&#x3002;</li>
+<li>&#x53D8;&#x66F4;&#x901A;&#x77E5;&#xFF0C;&#x5BF9;&#x5E94;&#x63A5;&#x53E3;NotifyListener&#xFF0C;&#x5BF9;&#x4E0A;&#x5C42;&#x8FDB;&#x884C;&#x53D8;&#x66F4;&#x901A;&#x77E5;&#xFF0C;&#x4EE5;&#x5237;&#x65B0;&#x96C6;&#x7FA4;&#x3002;</li>
+</ul>
+<p>motan&#x4E2D;&#xFF0C;Registry&#x63A5;&#x53E3;&#x7EE7;&#x627F;&#x4E86;DiscoveryService&#x548C;RegistryService&#xFF0C;&#x4E3B;&#x8981;&#x6709;&#x4EE5;&#x4E0B;&#x5B9E;&#x73B0;&#x7C7B;&#xFF1A;</p>
+<ul>
+<li>DirectRegistry&#xFF1A;&#x5B9E;&#x9645;&#x4E0A;&#x5C31;&#x662F;client&#x76F4;&#x63A5;&#x8FDE;&#x63A5;&#x5230;server&#x4E0A;&#xFF0C;&#x4E0D;&#x8D70;&#x914D;&#x7F6E;&#x4E2D;&#x5FC3;&#x3002;</li>
+<li>LocalRegistry&#xFF1A;&#x5C06;&#x670D;&#x52A1;&#x6CE8;&#x518C;&#x53D1;&#x73B0;&#x90FD;&#x4FDD;&#x5B58;&#x5728;&#x672C;&#x5730;&#x3002;</li>
+<li>AbstractRegistry&#xFF1A;&#x63D0;&#x4F9B;&#x6A21;&#x677F;&#x65B9;&#x6CD5;&#xFF0C;&#x5E2E;&#x52A9;&#x5B50;&#x7C7B;&#x89E3;&#x51B3;&#x65E5;&#x5FD7;&#x8BB0;&#x5F55;&#xFF0C;URL&#x5904;&#x7406;&#x7B49;&#x3002;</li>
+<li>FailbackRegistry&#xFF1A;&#x63D0;&#x4F9B;&#x5904;&#x7406;&#x65E0;&#x6CD5;&#x8FDE;&#x63A5;&#x5230;&#x4E2D;&#x5FC3;&#x7684;&#x5931;&#x8D25;&#x91CD;&#x8BD5;&#x529F;&#x80FD;&#x3002;</li>
+<li>CommandFailbackRegistry&#xFF1A;&#x63D0;&#x4F9B;&#x547D;&#x4EE4;&#x529F;&#x80FD;&#xFF0C;&#x7528;&#x4E8E;&#x901A;&#x8FC7;&#x7BA1;&#x7406;&#x754C;&#x9762;&#x8FDB;&#x884C;&#x670D;&#x52A1;&#x6CBB;&#x7406;&#x3002;</li>
+<li>ZookeeperRegistry&#x548C;ConsulRegistry&#xFF0C;&#x63D0;&#x4F9B;zk&#x548C;consul&#x7684;&#x76F8;&#x5E94;&#x5B9E;&#x73B0;&#x3002;</li>
+</ul>
+<p>&#x4EE5;zk&#x4E3A;&#x4F8B;&#xFF0C;&#x5F53;&#x670D;&#x52A1;com.weibo.motan.demo.service.MotanDemoService&#x88AB;&#x6CE8;&#x518C;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x5C06;&#x4F1A;&#x5728;zk&#x4E0A;&#x751F;&#x6210;&#x5982;&#x4E0B;&#x6811;&#x5F62;&#x7ED3;&#x6784;&#xFF1A;</p>
+<p>/motan/group/com.weibo.motan.demo.service.MotanDemoService/server/ip/</p>
+<p>&#x5F53;&#x5BA2;&#x6237;&#x7AEF;&#x53D1;&#x751F;&#x8BA2;&#x9605;&#x7684;&#x65F6;&#x5019;&#x7684;&#x6811;&#x5F62;&#x7ED3;&#x6784;&#xFF1A;</p>
+<p>/motan/group/com.weibo.motan.demo.service.MotanDemoService/server/ip/</p>
+<p>&#x4EE5;&#x4E0A;&#x90FD;&#x662F;ZNODE&#x7684;&#x4E34;&#x65F6;&#x8282;&#x70B9;&#xFF0C;&#x5E76;&#x4E14;&#x5C06;&#x914D;&#x7F6E;&#x4FE1;&#x606F;&#x5B58;&#x5728;ip&#x8282;&#x70B9;&#x4E2D;&#x3002;&#x5F53;&#x5BA2;&#x6237;&#x7AEF;&#x6216;&#x670D;&#x52A1;&#x7AEF;&#x7684;session&#x9000;&#x51FA;&#x540E;&#xFF0C;&#x8282;&#x70B9;&#x5C06;&#x4F1A;&#x81EA;&#x52A8;&#x9500;&#x6BC1;&#x3002;&#x5BF9;&#x4E8E;&#x5BA2;&#x6237;&#x7AEF;&#x8FD8;&#x9700;&#x8981;watch server&#x76EE;&#x5F55;&#x4E0B;&#x7684;&#x6240;&#x6709;child ZNODE&#xFF0C;&#x5F53;&#x53D1;&#x751F;&#x53D8;&#x66F4;&#xFF08;&#x6BD4;&#x5982;&#x4E0B;&#x7EBF;&#x3001;&#x914D;&#x7F6E;&#x53D8;&#x66F4;&#xFF09;&#xFF0C;&#x5219;&#x4F1A;&#x8C03;&#x7528;NotifyListener&#x8FDB;&#x884C;&#x96C6;&#x7FA4;&#x7684;&#x5237;&#x65B0;&#x64CD;&#x4F5C;&#x3002;</p>
+<h1 id="&#x540E;&#x8BB0;"><a href="#&#x540E;&#x8BB0;" class="headerlink" title="&#x540E;&#x8BB0;"></a>&#x540E;&#x8BB0;</h1><p>&#x81F3;&#x6B64;&#x6211;&#x4EEC;&#x5C31;&#x57FA;&#x672C;&#x8BB2;&#x5B8C;&#x4E86;motan&#x7684;&#x6838;&#x5FC3;&#x5B9E;&#x73B0;&#xFF0C;&#x5B9E;&#x9645;&#x4E0A;&#x8FD8;&#x6709;&#x4E00;&#x4E9B;&#x5185;&#x5BB9;&#x5E76;&#x6CA1;&#x6709;&#x8BB2;&#x89E3;&#x5230;&#x3002;&#x6BD4;&#x5982;&#xFF0C;motan&#x662F;&#x5982;&#x4F55;&#x8BB0;&#x5F55;&#x8BBF;&#x95EE;&#x65E5;&#x5FD7;&#x7684;(filter)&#xFF1F;&#x7EDF;&#x8BA1;&#x4FE1;&#x606F;&#x662F;&#x5982;&#x4F55;&#x5904;&#x7406;&#x7684;(callback)&#xFF1F;&#x670D;&#x52A1;&#x6CBB;&#x7406;&#x5E73;&#x53F0;&#x90FD;&#x6709;&#x54EA;&#x4E9B;&#x529F;&#x80FD;&#xFF0C;&#x662F;&#x5982;&#x4F55;&#x5B9E;&#x73B0;&#x7684;(command)&#x7B49;&#x7B49;&#x3002;&#x8FD9;&#x4E9B;&#x529F;&#x80FD;&#x76F8;&#x5BF9;&#x6BD4;&#x8F83;&#x5BB9;&#x6613;&#xFF0C;&#x7531;&#x4E8E;&#x7BC7;&#x5E45;&#x9650;&#x5236;&#xFF0C;&#x5C31;&#x9700;&#x8981;&#x8BFB;&#x8005;&#x81EA;&#x5DF1;&#x9605;&#x8BFB;&#x76F8;&#x5173;&#x6E90;&#x7801;&#x4E86;&#x3002;</p>
+<p>&#x5F88;&#x591A;&#x4EBA;&#x90FD;&#x4F1A;&#x95EE;&#xFF0C;<code>motan</code>&#x4E0E;&#x5176;&#x4ED6;RPC&#x6846;&#x67B6;&#x7684;&#x533A;&#x522B;&#x662F;&#x4EC0;&#x4E48;&#xFF1F;&#x8FD9;&#x91CC;&#x7684;&#x533A;&#x522B;&#x4E3B;&#x8981;&#x662F;&#x6307;&#x4E0E;<code>dubbo</code>&#x7684;&#x533A;&#x522B;&#x3002;&#x6211;&#x4ECE;&#x5934;&#x5230;&#x5C3E;review&#x4E86;&#x4E00;&#x904D;motan&#x7684;&#x4EE3;&#x7801;&#xFF0C;&#x53D1;&#x73B0;&#x4E0E;dubbo&#x6700;&#x5927;&#x7684;&#x533A;&#x522B;&#x5C31;&#x662F;&#xFF1A;motan&#x7684;&#x8BBE;&#x8BA1;&#x66F4;&#x52A0;&#x7CBE;&#x7B80;&#xFF0C;&#x914D;&#x7F6E;&#x66F4;&#x52A0;&#x7B80;&#x5355;&#x3002;&#x4ED6;&#x51E0;&#x4E4E;&#x5C31;&#x662F;&#x4E00;&#x4E2A;&#x526A;&#x88C1;&#x7248;&#x7684;dubbo&#xFF0C;&#x780D;&#x6389;&#x4E86;&#x5927;&#x90E8;&#x5206;&#x4E0D;&#x5E38;&#x7528;&#x7684;&#x914D;&#x7F6E;&#x548C;&#x7279;&#x6027;&#xFF0C;&#x800C;&#x7B80;&#x5355;&#x5219;&#x610F;&#x5473;&#x7740;&#x5BF9;&#x4E8C;&#x6B21;&#x5F00;&#x53D1;&#x66F4;&#x52A0;&#x53CB;&#x597D;&#x3002;motan&#x540C;&#x65F6;&#x63D0;&#x4F9B;&#x4E86;&#x4E00;&#x5957;&#x7B80;&#x5355;&#x7684;&#x670D;&#x52A1;&#x6CBB;&#x7406;&#x5E73;&#x53F0;&#xFF08;&#x867D;&#x7136;&#x529F;&#x80FD;&#x8FD8;&#x5F88;&#x4E0D;&#x5B8C;&#x5584;&#xFF09;&#xFF0C;&#x51E0;&#x4E4E;&#x5C31;&#x662F;&#x5F00;&#x7BB1;&#x5373;&#x7528;&#x3002;&#x5BF9;&#x4E8E;&#x6027;&#x80FD;&#xFF0C;&#x6211;&#x6CA1;&#x6709;&#x4EB2;&#x81EA;&#x8DD1;&#x8FC7;&#x57FA;&#x51C6;&#x6D4B;&#x8BD5;&#xFF0C;&#x6240;&#x4EE5;&#x8FD9;&#x91CC;&#x4E0D;&#x6562;&#x505A;&#x592A;&#x591A;&#x7684;&#x8BC4;&#x4EF7;&#x3002;&#x56E0;&#x6B64;dubbo&#x662F;&#x5927;&#x800C;&#x5168;&#xFF0C;motan&#x662F;&#x5C0F;&#x800C;&#x7CBE;&#x3002;</p>
+<p>&#x5173;&#x4E8E;SPI&#x673A;&#x5236;&#xFF0C;&#x4E2A;&#x4EBA;&#x8BA4;&#x4E3A;&#x8BBE;&#x8BA1;&#x7684;&#x5E76;&#x4E0D;&#x662F;&#x5F88;&#x4F18;&#x7F8E;&#xFF0C;&#x5145;&#x6EE1;&#x7740;&#x4EE3;&#x7801;&#x7684;&#x574F;&#x5473;&#x9053;&#xFF0C;&#x73B0;&#x5728;&#x5927;&#x591A;&#x6570;&#x7684;&#x5F00;&#x6E90;&#x9879;&#x76EE;&#x90FD;&#x5728;&#x4F7F;&#x7528;<a href="https://github.com/google/guice" target="_blank" rel="external">guice</a>(&#x6BD4;&#x5982;ES)&#xFF0C;&#x6216;&#x8005;&#x963F;&#x91CC;&#x7684;<a href="https://github.com/alibaba/cooma" target="_blank" rel="external">cooma</a>&#x3002;&#x56E0;&#x6B64;&#x8FD9;&#x79CD;SPI&#x7684;&#x8BBE;&#x8BA1;&#x65B9;&#x5F0F;&#x5E76;&#x4E0D;&#x662F;&#x5F88;&#x8D5E;&#x540C;&#xFF0C;&#x4E0D;&#x8FC7;&#x5BF9;&#x4E8E;&#x4E0D;&#x5E0C;&#x671B;&#x4F9D;&#x8D56;&#x5176;&#x4ED6;&#x4E09;&#x65B9;&#x6846;&#x67B6;&#x7684;&#x7CFB;&#x7EDF;&#x6765;&#x8BF4;&#xFF08;&#x6BD4;&#x5982;JDK&#xFF09;&#xFF0C;&#x5012;&#x4E5F;&#x8FD8;&#x6210;&#x3002;</p>
+
+                
+  <!-- css -->
+  <style type="text/css">
+      .center {
+          text-align: center;
+      }
+      .hidden {
+          display: none;
+      }
+    .donate_bar a.btn_donate{
+      display: inline-block;
+      width: 82px;
+      height: 82px;
+      background: url("http://7xsl28.com1.z0.glb.clouddn.com/btn_reward.gif") no-repeat;
+      _background: url("http://7xsl28.com1.z0.glb.clouddn.com/btn_reward.gif") no-repeat;
+
+      <!-- http://img.t.sinajs.cn/t5/style/images/apps_PRF/e_media/btn_reward.gif
+           因为本 hexo 生成的博客所用的 theme 的 a:hover 带动画效果，
+         为了在让打赏按钮显示效果正常 而 添加了以下几行 css，
+         嵌入其它博客时不一定要它们。 -->
+      -webkit-transition: background 0s;
+      -moz-transition: background 0s;
+      -o-transition: background 0s;
+      -ms-transition: background 0s;
+      transition: background 0s;
+      <!-- /让打赏按钮的效果显示正常 而 添加的几行 css 到此结束 -->
+    }
+
+    .donate_bar a.btn_donate:hover{ background-position: 0px -82px;}
+    .donate_bar .donate_txt {
+      display: block;
+      color: #9d9d9d;
+      font: 14px/2 "Microsoft Yahei";
+    }
+    .bold{ font-weight: bold; }
+  </style>
+  <!-- /css -->
+
+    <!-- Donate Module -->
+  <div id="donate_module">
+
+  <!-- btn_donate & tips -->
+  <div id="donate_board" class="donate_bar center">
+      <br>
+      ------------------------------------------------------------------------------------------------------------------------------
+      <br>
+    <a id="btn_donate" class="btn_donate" target="_self" href="javascript:;" title="Donate 打赏"></a>
+    <span class="donate_txt">
+      Enjoy it ? Donate me !  欣赏此文？求鼓励，求支持！
+    </span>
+
+
+  </div>
+  <!-- /btn_donate & tips -->
+
+  <!-- donate guide -->
+
+  <div id="donate_guide" class="donate_bar center hidden">
+        <br>
+        <br>
+
+    <a href="/img/wechat_pay.jpg" title="用微信扫一扫哦~" class="fancybox" rel="article0">
+      <img src="/img/wechat_pay.jpg" title="微信打赏 Colin" height="190px" width="auto"/>
+    </a>
+
+        &nbsp;&nbsp;
+
+    <!-- <a href="undefined" title="用支付宝扫一扫即可~" class="fancybox" rel="article0">
+      <img src="undefined" title="支付宝打赏 Colin" height="190px" width="auto"/>
+    </a> -->
+
+    <span class="donate_txt">
+      Enjoy it ? Donate me !  欣赏此文？求鼓励，求支持！
+    </span>
+
+  </div>
+  <!-- /donate guide -->
+
+  <!-- donate script -->
+  <script type="text/javascript">
+    document.getElementById('btn_donate').onclick = function() {
+      $('#donate_board').addClass('hidden');
+      $('#donate_guide').removeClass('hidden');
+    }
+
+    function donate_on_web(){
+      $('#donate').submit();
+        }
+
+    var original_window_onload = window.onload;
+        window.onload = function () {
+            if (original_window_onload) {
+                original_window_onload();
+            }
+            document.getElementById('donate_board_wdg').className = 'hidden';
+    }
+  </script>
+  <!-- /donate script -->
+</div>
+<!-- /Donate Module -->
+   
+
+ </br>
+ </br>
+
+             
+                <ul class="pager">
+                    
+                        <li class="previous">
+                            <a href="/hystrix_defend_your_webapp/" data-toggle="tooltip" data-placement="top" title="使用hystrix保护你的应用">&larr; Previous Post</a>
+                        </li>
+                    
+                    
+                        <li class="next">
+                            <a href="/shaizi_google/" data-toggle="tooltip" data-placement="top" title="一个有趣的骰子问题">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#框架" title="框架">框架</a>
+                        
+                          <a class="tag" href="/tags/#开源" title="开源">开源</a>
+                        
+                          <a class="tag" href="/tags/#RPC" title="RPC">RPC</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="http://youdang.github.io" target="_blank">youdang&#39;s Blog</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("http://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'always',
+          placement: 'right',
+          icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/TooBusyTooLazy">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/zhang-yan-32-14">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/kriszhang123">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/zhangyan985">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/kris-zhang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/岩-张-83aa7a121">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Kris&#39; Blog 2017 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("kriszhang.com/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("http://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+<script>
+    // dynamic User by Hux
+    var _gaId = 'UA-49627206-1';
+    var _gaDomain = 'huangxuan.me';
+
+    // Originial
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+
+<!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4cc1f2d8f3067386cc5cdb626a202900';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "//hm.baidu.com/hm.js?" + _baId;
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="kriszhang.com/motan_arch.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work --><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+
+</body>
+
+</html>

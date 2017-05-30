@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="两只bug鸣翠柳，一行代码上西天">
+    <meta name="keyword"  content="算法 大数据 系统架构 机器学习 Java技术 中间件 高并发">
+    <link rel="shortcut icon" href="/img/favicon.ico">
+    <meta name="baidu-site-verification" content="I9urFMjvnH" />
+<meta name="google-site-verification" content="kOhH4Y18J0KFSbfkCwJhRGpHFvY1aoSeyVci6XDCxAs" />
+    <title>
+        
+          利用Spring-Retry定制化你的RPC重试 - Kris的博客 | Kris&#39; Blog
+        
+    </title>
+
+    <link rel="canonical" href="kriszhang.com/spring-retry/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="/css/syntax.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="http://cdn.staticfile.org/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id='wx_pic' style='margin:0 auto;display:none;'>
+    <img src='head.jpg' />
+  </div>
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Kris&#39; Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="kriszhang.com/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('head.jpg')
+    }
+</style>
+<header class="intro-header" >
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#框架" title="框架">框架</a>
+                        
+                          <a class="tag" href="/tags/#spring" title="spring">spring</a>
+                        
+                          <a class="tag" href="/tags/#服务重试" title="服务重试">服务重试</a>
+                        
+                    </div>
+                    <h1>利用Spring-Retry定制化你的RPC重试</h1>
+                    <h2 class="subheading"></h2>
+                    <span class="meta">
+                        Posted by kris.zhang on
+                        2017-05-21
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "//hm.baidu.com/hm.js?e06e6395b235a8f00dd89c228abbb3f1";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+    </script>
+</header>
+
+<!-- Post Content -->
+<article>
+  <div id='wx_pic' style='margin:0 auto;display:none;'>
+    <img src='head.jpg' />
+  </div>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <p>&#x5047;&#x8BBE;A,B&#x4E24;&#x4E2A;&#x7CFB;&#x7EDF;&#xFF0C;&#x5F53;<code>A-&gt;B</code>&#x7684;&#x8C03;&#x7528;&#x5931;&#x8D25;&#x65F6;&#xFF0C;&#x6211;&#x4EEC;&#x53EF;&#x4EE5;&#x91C7;&#x53D6;&#x4F55;&#x79CD;&#x7B56;&#x7565;&#xFF1F;&#x4EE5;&#x4E0B;&#x662F;&#x5E38;&#x89C1;&#x7684;&#x7B56;&#x7565;&#xFF1A;</p>
+<ol>
+<li><code>failfast</code>&#xFF0C;&#x5373;&#x5FEB;&#x901F;&#x5931;&#x8D25;&#x50CF;&#x4E0A;&#x5C42;&#x629B;&#x51FA;<code>&#x8FDC;&#x7A0B;&#x8C03;&#x7528;&#x5F02;&#x5E38;</code></li>
+<li><code>failover</code>&#xFF0C;&#x5373;A-&gt;B&#x5931;&#x8D25;&#xFF0C;&#x9009;&#x62E9;&#x96C6;&#x7FA4;&#x5176;&#x4ED6;&#x673A;&#x5668;A-&gt;Bn(1&#x2026;N)</li>
+<li><code>failsafe</code>&#xFF0C;&#x5931;&#x8D25;&#x541E;&#x5F02;&#x5E38;</li>
+<li><code>failback</code>, &#x8FC7;&#x4E00;&#x4F1A;&#x518D;&#x91CD;&#x8BD5;&#xFF0C;&#x6BD4;&#x5982;&#x7F51;&#x7EDC;&#x6296;&#x52A8;&#xFF0C;&#x7B49;&#x4E00;&#x5C0F;&#x4F1A;&#x5728;&#x91CD;&#x8BD5;&#x3002;</li>
+</ol>
+<p>&#x5176;&#x4E2D;failback&#x5219;&#x662F;&#x672C;&#x6587;&#x6240;&#x8981;&#x8BA8;&#x8BBA;&#x7684;&#x6838;&#x5FC3;&#x5185;&#x5BB9;&#x3002;&#x6709;&#x4E9B;rpc&#x6846;&#x67B6;&#x63D0;&#x4F9B;failback&#x7B56;&#x7565;&#xFF0C;&#x6BD4;&#x5982;dubbo&#xFF0C;&#x4F46;dubbo&#x7684;failback&#x4EC5;&#x4EC5;&#x53EA;&#x662F;&#x8BBE;&#x7F6E;&#x91CD;&#x8BD5;&#x6B21;&#x6570;&#xFF0C;&#x529F;&#x80FD;&#x5355;&#x4E00;&#x3002;&#x66F4;&#x591A;&#x7684;RPC&#x6846;&#x67B6;&#x5219;&#x61D2;&#x5F97;&#x7BA1;&#x8FD9;&#x4E8B;&#x513F;&#xFF0C;&#x4ED6;&#x4EEC;&#x5C06;failback&#x7B56;&#x7565;&#x5B9E;&#x73B0;&#x4EA4;&#x7ED9;&#x7528;&#x6237;&#x81EA;&#x5DF1;&#x53BB;&#x505A;&#xFF0C;&#x4F60;&#x7231;&#x600E;&#x4E48;&#x505A;&#x5C31;&#x600E;&#x4E48;&#x505A;&#x3002;</p>
+<p>&#x90A3;&#x4E48;&#x601D;&#x8003;&#x4E00;&#x4E0B;&#xFF0C;&#x5982;&#x679C;&#x6211;&#x4EEC;&#x8981;&#x81EA;&#x5DF1;&#x505A;failback&#xFF0C;&#x6BD4;&#x5982;&#x5982;&#x4E0B;&#x573A;&#x666F;&#xFF1A;XXXFacade&#x8C03;&#x7528;&#x5931;&#x8D25;&#x540E;&#xFF0C;&#x6211;&#x4EEC;&#x7B49;20&#x6BEB;&#x79D2;&#x5728;&#x91CD;&#x8BD5;&#xFF0C;&#x4E00;&#x5171;&#x91CD;&#x8BD5;5&#x6B21;&#xFF0C;&#x5982;&#x679C;&#x4F9D;&#x65E7;&#x5931;&#x8D25;&#x5219;&#x6253;&#x4E00;&#x6761;&#x65E5;&#x5FD7;&#x51FA;&#x6765;&#x3002;&#x4E00;&#x822C;&#x4EBA;&#x7684;&#x5B9E;&#x73B0;&#xFF0C;&#x4F1A;&#x505A;&#x4E00;&#x4E2A;<code>for(int n; n &lt; 5;)</code>&#x5FAA;&#x73AF;&#xFF0C;&#x5E76;&#x4E14;<code>catch XXXFacade</code>&#x5F02;&#x5E38;&#x540E;<code>sleep(5s)</code>&#xFF0C;&#x6700;&#x540E;&#x5224;&#x65AD;n&#x7684;&#x6B21;&#x6570;&#x3002;&#x8FD9;&#x4E2A;&#x529E;&#x6CD5;&#x786E;&#x5B9E;&#x80FD;&#x5B9E;&#x73B0;&#x8BE5;&#x529F;&#x80FD;&#xFF0C;&#x4F46;&#x662F;&#x91CD;&#x590D;&#x65E9;&#x8F6E;&#x5B50;&#xFF0C;&#x5E76;&#x4E14;&#x529F;&#x80FD;&#x6269;&#x5C55;&#x6027;&#x4E5F;&#x4E0D;&#x9AD8;&#x3002;&#x672C;&#x6587;&#x6559;&#x5927;&#x5BB6;&#x4F7F;&#x7528;spring-retry&#x6846;&#x67B6;&#x5B9E;&#x73B0;&#x53EF;&#x5B9A;&#x5236;&#x5316;&#x7684;&#x8C03;&#x7528;&#x91CD;&#x8BD5;&#x7B56;&#x7565;&#x3002;&#x6587;&#x7AE0;&#x4E3B;&#x8981;&#x5305;&#x542B;&#x4EE5;&#x4E0B;&#x51E0;&#x4E2A;&#x65B9;&#x9762;&#xFF1A;</p>
+<ul>
+<li>&#x6574;&#x4F53;&#x6982;&#x89C8;</li>
+<li>retry&#x7B56;&#x7565;</li>
+<li>backoff&#x7B56;&#x7565;</li>
+<li>&#x5176;&#x4ED6;&#x65B9;&#x9762;</li>
+<li>&#x5B9E;&#x73B0;&#x6587;&#x7AE0;&#x5F00;&#x5934;&#x7684;&#x4F8B;&#x5B50;</li>
+</ul>
+<h2 id="&#x6846;&#x67B6;&#x6982;&#x89C8;"><a href="#&#x6846;&#x67B6;&#x6982;&#x89C8;" class="headerlink" title="&#x6846;&#x67B6;&#x6982;&#x89C8;"></a>&#x6846;&#x67B6;&#x6982;&#x89C8;</h2><p> <br><em>Spring Retry</em> &#x6846;&#x67B6;&#x5E7F;&#x6CDB;&#x4F7F;&#x7528;&#x4E8E;<code>Spring Batch</code>,<code>Spring Integration</code>,<code>Spring for Apache Hadoop</code>&#x7B49;spring&#x9879;&#x76EE;&#xFF0C;&#x7531;&#x4E8E;spring-try&#x6E90;&#x4EE3;&#x7801;&#x7B80;&#x5355;&#x660E;&#x786E;&#xFF0C;&#x672C;&#x6587;&#x4E0D;&#x4F1A;&#x8BB2;&#x5176;&#x5B9E;&#x73B0;&#xFF0C;&#x53EA;&#x8BB2;&#x89E3;&#x5176;&#x5927;&#x4F53;&#x6267;&#x884C;&#x6D41;&#x548C;&#x76F8;&#x5E94;&#x7684;&#x6846;&#x67B6;&#x62BD;&#x8C61;&#x3002;&#x5176;&#x6574;&#x4F53;&#x601D;&#x8DEF;&#x5927;&#x81F4;&#x5982;&#x4E0B;&#x56FE;&#x6240;&#x793A;&#xFF1A;</p>
+<p><img src="/spring-retry/spring-retry.png" alt="srping"></p>
+<p>1. <code>RetryTemplate</code>&#xFF0C;&#x91CD;&#x8BD5;&#x6A21;&#x677F;&#xFF0C;&#x662F;&#x8FDB;&#x5165;spring-retry&#x6846;&#x67B6;&#x7684;&#x6574;&#x4F53;&#x6D41;&#x7A0B;&#x5165;&#x53E3;</p>
+<ol>
+<li><code>RetryCallback</code>&#xFF0C;&#x91CD;&#x8BD5;&#x56DE;&#x8C03;&#xFF0C;&#x7528;&#x6237;&#x5305;&#x88C5;&#x4E1A;&#x52A1;&#x6D41;&#xFF0C;&#x7B2C;&#x4E00;&#x6B21;&#x6267;&#x884C;&#x548C;&#x4EA7;&#x751F;&#x91CD;&#x8BD5;&#x6267;&#x884C;&#x90FD;&#x4F1A;&#x8C03;&#x7528;&#x8FD9;&#x4E2A;callback&#x4EE3;&#x7801;</li>
+<li><code>RetryPolicy</code>&#xFF0C;&#x91CD;&#x8BD5;&#x7B56;&#x7565;&#xFF0C;&#x4E0D;&#x540C;&#x7B56;&#x7565;&#x6709;&#x4E0D;&#x540C;&#x7684;&#x91CD;&#x8BD5;&#x65B9;&#x5F0F;</li>
+<li><code>BackOffPolicy</code>&#xFF0C;&#x4E24;&#x6B21;&#x91CD;&#x8BD5;&#x4E4B;&#x95F4;&#x7684;&#x56DE;&#x907F;&#x7B56;&#x7565;&#xFF0C;&#x4E00;&#x822C;&#x91C7;&#x7528;&#x8D85;&#x65F6;&#x65F6;&#x95F4;&#x673A;&#x5236;</li>
+<li><code>RecoveryCallback</code>&#xFF0C;&#x5F53;&#x6240;&#x6709;&#x91CD;&#x8BD5;&#x90FD;&#x5931;&#x8D25;&#x540E;&#xFF0C;&#x56DE;&#x8C03;&#x8BE5;&#x63A5;&#x53E3;&#xFF0C;&#x63D0;&#x4F9B;&#x7ED9;&#x4E1A;&#x52A1;&#x91CD;&#x8BD5;&#x56DE;&#x590D;&#x673A;&#x5236;</li>
+<li><code>RetryContext</code>&#xFF0C;&#x6BCF;&#x6B21;&#x91CD;&#x8BD5;&#x90FD;&#x4F1A;&#x5C06;&#x5176;&#x4F5C;&#x4E3A;&#x53C2;&#x6570;&#x4F20;&#x5165;RetryCallback&#x4E2D;&#x4F7F;&#x7528;</li>
+<li><code>RetryListener</code>&#xFF0C;&#x76D1;&#x542C;&#x91CD;&#x8BD5;&#x884C;&#x4E3A;&#xFF0C;&#x4E3B;&#x8981;&#x7528;&#x4E8E;&#x76D1;&#x63A7;&#x3002;</li>
+</ol>
+<p>&#x5F53;RetryCallback&#x7684;&#x8C03;&#x7528;&#x4EA7;&#x751F;&#x5F02;&#x5E38;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x6846;&#x67B6;&#x9996;&#x5148;&#x4F1A;&#x901A;&#x8FC7;&#x6211;&#x4EEC;&#x8BBE;&#x7F6E;&#x7684;RetryPolicy&#x5224;&#x65AD;&#x672C;&#x6B21;&#x5F02;&#x5E38;&#x662F;&#x5426;&#x9700;&#x8981;&#x91CD;&#x8BD5;&#xFF0C;&#x5982;&#x679C;&#x9700;&#x8981;&#x91CD;&#x8BD5;&#xFF0C;&#x5219;&#x8C03;&#x7528;BackOffPolicy&#xFF0C;&#x56DE;&#x9000;&#x4E00;&#x5B9A;&#x65F6;&#x95F4;&#x540E;&#xFF0C;&#x5728;&#x91CD;&#x65B0;&#x8C03;&#x7528;RetryCallback&#x3002;&#x5982;&#x679C;&#x6240;&#x6709;&#x91CD;&#x8BD5;&#x90FD;&#x5931;&#x8D25;&#x4E86;&#xFF0C;&#x5219;&#x9000;&#x51FA;&#x91CD;&#x8BD5;&#xFF0C;&#x8C03;&#x7528;RecoveryCallback&#x9000;&#x51FA;&#x6846;&#x67B6;&#x3002;</p>
+<p>&#x4F7F;&#x7528;&#x793A;&#x4F8B;&#x5982;&#x4E0B;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Throwable </span>{</div><div class="line"></div><div class="line">       <span class="comment">// &#x65B0;&#x5EFA;&#x4E00;&#x4E2A;&#x6A21;&#x677F;&#xFF0C;&#x53EF;&#x7528;&#x4F5C;&#x4E3A;&#x6211;&#x4E00;&#x4E2A;spring bean&#x6CE8;&#x5165;&#x8FDB;&#x6765;</span></div><div class="line">       RetryTemplate template = <span class="keyword">new</span> RetryTemplate();</div><div class="line"></div><div class="line">       RetryCallback&lt;String, Throwable&gt; retryCallback = context -&gt; remoteInvoke();</div><div class="line">       RecoveryCallback&lt;String&gt; recoveryCallback = context -&gt; {System.out.println(<span class="string">&quot;recovery&quot;</span>); <span class="keyword">return</span> <span class="string">&quot;recovery&quot;</span>;};</div><div class="line"></div><div class="line">       <span class="comment">// &#x8BBE;&#x7F6E;&#x56DE;&#x907F;&#x7B56;&#x7565;</span></div><div class="line">       template.setBackOffPolicy(<span class="keyword">new</span> FixedBackOffPolicy());</div><div class="line"></div><div class="line">       <span class="comment">// &#x8BBE;&#x7F6E;&#x7B56;&#x7565;</span></div><div class="line">       template.setRetryPolicy(<span class="keyword">new</span> SimpleRetryPolicy(<span class="number">5</span>));</div><div class="line"></div><div class="line">       <span class="comment">// &#x8BBE;&#x7F6E;listener</span></div><div class="line">       template.setListeners(<span class="keyword">new</span> RetryListener[]{<span class="keyword">new</span> StatisticsListener(<span class="keyword">new</span> DefaultStatisticsRepository())});</div><div class="line"></div><div class="line">       <span class="comment">// &#x6267;&#x884C;&#x6A21;&#x677F;</span></div><div class="line">       template.execute(retryCallback, recoveryCallback);</div><div class="line">   }</div></pre></td></tr></table></figure>
+<h2 id="&#x91CD;&#x8BD5;&#x7B56;&#x7565;"><a href="#&#x91CD;&#x8BD5;&#x7B56;&#x7565;" class="headerlink" title="&#x91CD;&#x8BD5;&#x7B56;&#x7565;"></a>&#x91CD;&#x8BD5;&#x7B56;&#x7565;</h2><p>&#x652F;&#x6301;&#x7684;&#x91CD;&#x8BD5;&#x7B56;&#x7565;&#x5982;&#x4E0B;&#xFF1A;</p>
+<ol>
+<li><code>NeverRetryPolicy</code>&#xFF1A;&#x53EA;&#x8C03;&#x7528;RetryCallback&#x4E00;&#x6B21;&#xFF0C;&#x4E0D;&#x91CD;&#x8BD5;&#xFF1B;</li>
+<li><code>AlwaysRetryPolicy</code>&#xFF1A;&#x65E0;&#x9650;&#x91CD;&#x8BD5;&#xFF0C;&#x6700;&#x597D;&#x4E0D;&#x8981;&#x7528;</li>
+<li><code>SimpleRetryPolicy</code>&#xFF1A;&#x91CD;&#x8BD5;n&#x6B21;&#xFF0C;&#x9ED8;&#x8BA4;3&#xFF0C;&#x4E5F;&#x662F;&#x6A21;&#x677F;&#x9ED8;&#x8BA4;&#x7684;&#x7B56;&#x7565;&#x3002;&#x5F88;&#x5E38;&#x7528;</li>
+<li><code>TimeoutRetryPolicy</code>&#xFF1A;&#x5728;n&#x6BEB;&#x79D2;&#x5185;&#x4E0D;&#x65AD;&#x8FDB;&#x884C;&#x91CD;&#x8BD5;&#xFF0C;&#x8D85;&#x8FC7;&#x8FD9;&#x4E2A;&#x65F6;&#x95F4;&#x540E;&#x505C;&#x6B62;&#x91CD;&#x8BD5;</li>
+<li><code>CircuitBreakerRetryPolicy</code>&#xFF1A;&#x7194;&#x65AD;&#x529F;&#x80FD;&#x7684;&#x91CD;&#x8BD5;&#xFF0C;&#x5173;&#x4E8E;&#x7194;&#x65AD;&#xFF0C;&#x8BF7;&#x53C2;&#x8003;&#xFF1A;<a href="http://kriszhang.com/hystrix_defend_your_webapp/">&#x4F7F;&#x7528;hystrix&#x4FDD;&#x62A4;&#x4F60;&#x7684;&#x5E94;&#x7528;</a></li>
+<li><code>ExceptionClassifierRetryPolicy</code>: &#x53EF;&#x4EE5;&#x6839;&#x636E;&#x4E0D;&#x540C;&#x7684;&#x5F02;&#x5E38;&#xFF0C;&#x6267;&#x884C;&#x4E0D;&#x540C;&#x7684;&#x91CD;&#x8BD5;&#x7B56;&#x7565;&#xFF0C;&#x5F88;&#x5E38;&#x7528;</li>
+<li><code>CompositeRetryPolicy</code>&#xFF1A;&#x5C06;&#x4E0D;&#x540C;&#x7684;&#x7B56;&#x7565;&#x7EC4;&#x5408;&#x8D77;&#x6765;&#xFF0C;&#x6709;&#x60B2;&#x89C2;&#x7EC4;&#x5408;&#x548C;&#x4E50;&#x89C2;&#x7EC4;&#x5408;&#x3002;&#x60B2;&#x89C2;&#x9ED8;&#x8BA4;&#x91CD;&#x8BD5;&#xFF0C;&#x6709;&#x4E0D;&#x91CD;&#x8BD5;&#x7684;&#x7B56;&#x7565;&#x5219;&#x4E0D;&#x91CD;&#x8BD5;&#x3002;&#x4E50;&#x89C2;&#x9ED8;&#x8BA4;&#x4E0D;&#x91CD;&#x8BD5;&#xFF0C;&#x6709;&#x9700;&#x8981;&#x91CD;&#x8BD5;&#x7684;&#x7B56;&#x7565;&#x5219;&#x91CD;&#x8BD5;&#x3002;</li>
+</ol>
+<p>&#x4E0B;&#x9762;&#x7B80;&#x5355;&#x601D;&#x8003;&#x4E00;&#x4E0B;&#x4EE5;&#x4E0A;&#x7B56;&#x7565;&#x7684;&#x5B9E;&#x73B0;&#x65B9;&#x5F0F;&#x3002;</p>
+<ol>
+<li>NeverRetryPolicy&#xFF1A;&#x5224;&#x65AD;&#x662F;&#x5426;&#x91CD;&#x8BD5;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x76F4;&#x63A5;&#x8FD4;&#x56DE;false</li>
+<li>AlwaysRetryPolicy&#xFF1A;&#x5224;&#x65AD;&#x662F;&#x5426;&#x91CD;&#x8BD5;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x76F4;&#x63A5;&#x8FD4;&#x56DE;true</li>
+<li>SimpleRetryPolicy&#xFF1A;&#x901A;&#x8FC7;&#x4E00;&#x4E2A;&#x8BA1;&#x6570;n&#xFF0C;&#x6BCF;&#x6B21;&#x91CD;&#x8BD5;&#x81EA;&#x589E;</li>
+<li>TimeoutRetryPolicy&#xFF1A;&#x4FDD;&#x5B58;&#x7B2C;&#x4E00;&#x6B21;&#x91CD;&#x8BD5;&#x65F6;&#x95F4;&#xFF0C;&#x6BCF;&#x6B21;&#x8FDB;&#x884C;&#x91CD;&#x8BD5;&#x5224;&#x65AD; <code>&#x5F53;&#x524D;&#x6BEB;&#x79D2;&#x65F6;&#x95F4;-&#x7B2C;&#x4E00;&#x6B21;&#x91CD;&#x8BD5;&#x65F6;&#x95F4; &gt; &#x8BBE;&#x7F6E;&#x7684;&#x65F6;&#x95F4;&#x95F4;&#x9694;</code></li>
+<li>CircuitBreakerRetryPolicy&#xFF1A;&#x4E0E;4&#x7C7B;&#x4F3C;</li>
+<li>ExceptionClassifierRetryPolicy&#xFF1A;&#x91C7;&#x7528;&#x4E00;&#x4E2A;Map&#x5B9E;&#x73B0;&#xFF0C;&#x6BCF;&#x6B21;&#x5F02;&#x5E38;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x62FF;&#x5230;&#x5BF9;&#x5E94;&#x91CD;&#x8BD5;&#x7B56;&#x7565;&#xFF0C;&#x5728;&#x91CD;&#x8BD5;&#x5373;&#x53EF;</li>
+<li>CompositeRetryPolicy&#xFF1A;&#x4F7F;&#x7528;&#x6570;&#x636E;&#x4F9D;&#x6B21;&#x4FDD;&#x5B58;&#x7B56;&#x7565;&#xFF0C;&#x6267;&#x884C;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x987A;&#x5E8F;&#x6267;&#x884C;&#x5373;&#x53EF;</li>
+</ol>
+<h2 id="&#x56DE;&#x907F;&#x7B56;&#x7565;"><a href="#&#x56DE;&#x907F;&#x7B56;&#x7565;" class="headerlink" title="&#x56DE;&#x907F;&#x7B56;&#x7565;"></a>&#x56DE;&#x907F;&#x7B56;&#x7565;</h2><p>&#x652F;&#x6301;&#x7684;&#x56DE;&#x907F;&#x7B56;&#x7565;&#x5982;&#x4E0B;&#xFF1A;</p>
+<ol>
+<li><code>NoBackOffPolicy</code>&#xFF1A;&#x4E0D;&#x56DE;&#x907F;</li>
+<li><code>FixedBackOffPolicy</code>&#xFF1A;n&#x6BEB;&#x79D2;&#x9000;&#x907F;&#x540E;&#x518D;&#x8FDB;&#x884C;&#x91CD;&#x8BD5;</li>
+<li><code>UniformRandomBackOffPolicy</code>&#xFF1A;&#x968F;&#x673A;&#x9009;&#x62E9;&#x4E00;&#x4E2A;[n,m]&#xFF08;&#x5982;20ms&#xFF0C;40ms)&#x56DE;&#x907F;&#x65F6;&#x95F4;&#x56DE;&#x907F;&#x540E;&#xFF0C;&#x7136;&#x540E;&#x5728;&#x91CD;&#x8BD5;</li>
+<li><code>ExponentialBackOffPolicy</code>&#xFF1A;&#x6307;&#x6570;&#x9000;&#x907F;&#x7B56;&#x7565;&#xFF0C;&#x4F11;&#x7720;&#x65F6;&#x95F4;&#x6307;&#x6570;&#x9012;&#x589E;</li>
+<li><code>ExponentialRandomBackOffPolicy</code>&#xFF1A;&#x968F;&#x673A;&#x6307;&#x6570;&#x9000;&#x907F;&#xFF0C;&#x6307;&#x6570;&#x4E2D;&#x4E58;&#x79EF;&#x4F1A;&#x6DF7;&#x5165;&#x968F;&#x673A;&#x503C;</li>
+</ol>
+<p>&#x4EE5;&#x4E0A;&#x6709;&#x4E24;&#x70B9;&#x9700;&#x8981;&#x6CE8;&#x610F;&#xFF1A;</p>
+<ol>
+<li>&#x5982;&#x4F55;&#x6267;&#x884C;&#x56DE;&#x907F;?&#x4E00;&#x822C;&#x4F7F;&#x7528;<code>ThreadWaitSleeper</code>&#xFF0C;&#x5373;&#x5F53;&#x524D;&#x7EBF;&#x7A0B;&#x76F4;&#x63A5;sleep&#x4E00;&#x6BB5;&#x65F6;&#x95F4;&#x3002;</li>
+<li>&#x51E1;&#x662F;&#x5E26;&#x6709;&#x968F;&#x673A;&#x6027;&#x7684;&#x7B56;&#x7565;&#xFF0C;&#x5927;&#x591A;&#x90FD;&#x662F;&#x4E3A;&#x4E86;&#x907F;&#x514D;<code>&#x60CA;&#x7FA4;&#x6548;&#x5E94;</code>&#xFF0C;&#x9632;&#x6B62;&#x76F8;&#x540C;&#x65F6;&#x95F4;&#x6267;&#x884C;&#x5927;&#x91CF;&#x64CD;&#x4F5C;&#x3002;</li>
+</ol>
+<p>&#x4E0B;&#x9762;&#x601D;&#x8003;&#x4E00;&#x4E0B;&#x4EE5;&#x4E0A;&#x7B56;&#x7565;&#x7684;&#x5B9E;&#x73B0;&#x65B9;&#x5F0F;&#xFF1A;</p>
+<ol>
+<li>NoBackOffPolicy&#xFF1A;&#x76F4;&#x63A5;&#x8FD4;&#x56DE;&#x5373;&#x53EF;</li>
+<li>FixedBackOffPolicy`: &#x76F4;&#x63A5;&#x901A;&#x8FC7;Sleeper&#x8BBE;&#x7F6E;n&#x79D2;&#x5373;&#x53EF;</li>
+<li>UniformRandomBackOffPolicy:  FixedBackOffPolicy + Random()</li>
+<li>ExponentialBackOffPolicy&#xFF1A;T = initial; T = T + T * multiplier</li>
+<li>ExponentialRandomBackOffPolicy&#xFF1A;T = initial; T = (T + T <em> multiplier) </em> (1 + randomFloat() * (multiplier - 1))</li>
+</ol>
+<h2 id="&#x5176;&#x4ED6;&#x4E3B;&#x9898;"><a href="#&#x5176;&#x4ED6;&#x4E3B;&#x9898;" class="headerlink" title="&#x5176;&#x4ED6;&#x4E3B;&#x9898;"></a>&#x5176;&#x4ED6;&#x4E3B;&#x9898;</h2><h3 id="&#x76D1;&#x542C;&#x5668;&#x548C;&#x76D1;&#x63A7;"><a href="#&#x76D1;&#x542C;&#x5668;&#x548C;&#x76D1;&#x63A7;" class="headerlink" title="&#x76D1;&#x542C;&#x5668;&#x548C;&#x76D1;&#x63A7;"></a>&#x76D1;&#x542C;&#x5668;&#x548C;&#x76D1;&#x63A7;</h3><p><br>&#x76D1;&#x542C;&#x5668;&#x63A5;&#x53E3;&#x5982;&#x4E0B;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line">   <span class="comment">// &#x7B2C;&#x4E00;&#x6B21;&#x91CD;&#x8BD5;&#x7684;&#x65F6;&#x5019;&#x4F1A;&#x6267;&#x884C;&#x8BE5;&#x65B9;&#x6CD5;</span></div><div class="line">&lt;T, E extends Throwable&gt; <span class="function"><span class="keyword">boolean</span> <span class="title">open</span><span class="params">(RetryContext context, RetryCallback&lt;T, E&gt; callback)</span></span>;</div><div class="line"></div><div class="line">   <span class="comment">// &#x91CD;&#x8BD5;&#x7ED3;&#x675F;&#x540E;&#x4F1A;&#x8C03;&#x7528;&#x6539;&#x65B9;&#x6CD5;</span></div><div class="line">&lt;T, E extends Throwable&gt; <span class="function"><span class="keyword">void</span> <span class="title">close</span><span class="params">(RetryContext context, RetryCallback&lt;T, E&gt; callback, Throwable throwable)</span></span>;</div><div class="line"></div><div class="line">   <span class="comment">// &#x6BCF;&#x6B21;&#x91CD;&#x8BD5;&#x4EA7;&#x751F;&#x5F02;&#x5E38;&#x65F6;&#x4F1A;&#x8C03;&#x7528;&#x6539;&#x65B9;&#x6CD5;</span></div><div class="line">&lt;T, E extends Throwable&gt; <span class="function"><span class="keyword">void</span> <span class="title">onError</span><span class="params">(RetryContext context, RetryCallback&lt;T, E&gt; callback, Throwable throwable)</span></span>;</div></pre></td></tr></table></figure>
+<p>&#x6211;&#x7406;&#x89E3;&#x7684;&#x76D1;&#x542C;&#x5668;&#x662F;&#x4E00;&#x4E2A;&#x5F88;&#x9E21;&#x808B;&#x7684;&#x529F;&#x80FD;&#xFF0C;&#x4E3B;&#x8981;&#x7528;&#x4E8E;&#x76D1;&#x63A7;&#x6A21;&#x677F;&#x6267;&#x884C;&#x60C5;&#x51B5;&#xFF1A;<code>new StatisticsListener(new DefaultStatisticsRepository())</code></p>
+<h3 id="&#x6709;&#x72B6;&#x6001;&#x548C;&#x65E0;&#x72B6;&#x6001;&#x91CD;&#x8BD5;"><a href="#&#x6709;&#x72B6;&#x6001;&#x548C;&#x65E0;&#x72B6;&#x6001;&#x91CD;&#x8BD5;" class="headerlink" title="&#x6709;&#x72B6;&#x6001;&#x548C;&#x65E0;&#x72B6;&#x6001;&#x91CD;&#x8BD5;"></a>&#x6709;&#x72B6;&#x6001;&#x548C;&#x65E0;&#x72B6;&#x6001;&#x91CD;&#x8BD5;</h3><p>&#x4E0A;&#x6587;&#x8BA8;&#x8BBA;&#x7684;&#x90FD;&#x662F;&#x65E0;&#x72B6;&#x6001;&#x91CD;&#x8BD5;&#xFF0C;&#x8FD9;&#x610F;&#x5473;&#x7740;&#x4EA7;&#x751F;&#x5F02;&#x5E38;&#xFF0C;&#x5E76;&#x4E0D;&#x4F1A;&#x5C06;&#x5176;&#x629B;&#x51FA;&#x53BB;&#xFF0C;&#x5BF9;&#x4E8E;&#x4E8B;&#x52A1;&#x6027;&#x8C03;&#x7528;&#xFF0C;&#x8FD9;&#x662F;&#x4E0D;&#x53EF;&#x5BB9;&#x5FCD;&#x7684;&#xFF0C;&#x56E0;&#x4E3A;&#x4E0A;&#x5C42;&#x6846;&#x67B6;&#x9700;&#x8981;&#x83B7;&#x5F97;&#x5F02;&#x5E38;&#x8FDB;&#x884C;&#x4E8B;&#x52A1;&#x7684;&#x56DE;&#x6EDA;&#x64CD;&#x4F5C;&#x3002;&#x6B64;&#x65F6;&#x5E94;&#x5F53;&#x4F7F;&#x7528;&#x6709;&#x72B6;&#x6001;&#x91CD;&#x8BD5;&#x3002;&#x5982;&#x4E0B;&#x4EE3;&#x7801;&#x793A;&#x4F8B;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line">BinaryExceptionClassifier classifier = <span class="keyword">new</span> BinaryExceptionClassifier(</div><div class="line">    Collections.singleton(Throwable.class)</div><div class="line">);</div><div class="line"></div><div class="line">RetryState state = <span class="keyword">new</span> DefaultRetryState(<span class="string">&quot;mykey&quot;</span>, <span class="keyword">false</span>, classifier);</div><div class="line"></div><div class="line"><span class="comment">// &#x6709;&#x72B6;&#x6001;</span></div><div class="line">String result = template.execute((RetryCallback&lt;String, Throwable&gt;)context -&gt; {</div><div class="line">    remoteInvoke();</div><div class="line">    <span class="keyword">return</span> <span class="string">&quot;ret&quot;</span>;</div><div class="line">}, context -&gt; {</div><div class="line">    <span class="keyword">return</span> <span class="string">&quot;recovery&quot;</span>;</div><div class="line">}, state);</div></pre></td></tr></table></figure>
+<p>&#x4E8B;&#x52A1;&#x7684;&#x5F00;&#x9500;&#x4E00;&#x822C;&#x8F83;&#x5927;&#xFF0C;&#x8FD9;&#x91CC;&#x867D;&#x7136;&#x80FD;&#x591F;&#x6709;&#x72B6;&#x6001;&#x91CD;&#x8BD5;&#x8FDB;&#x884C;&#x4E8B;&#x52A1;&#x7684;&#x56DE;&#x6EDA;&#xFF0C;&#x4F46;&#x5E76;&#x4E0D;&#x5EFA;&#x8BAE;&#x53BB;&#x8FDB;&#x884C;&#x4E8B;&#x52A1;&#x7684;&#x91CD;&#x8BD5;&#xFF0C;&#x800C;&#x5E94;&#x5F53;&#x4F7F;&#x7528;failfast&#x673A;&#x5236;&#xFF0C;&#x53EF;&#x80FD;&#x66F4;&#x52A0;&#x5408;&#x7406;&#x4E00;&#x4E9B;&#x3002;</p>
+<h2 id="&#x5B9E;&#x73B0;&#x6587;&#x7AE0;&#x5F00;&#x5934;&#x7684;&#x4F8B;&#x5B50;"><a href="#&#x5B9E;&#x73B0;&#x6587;&#x7AE0;&#x5F00;&#x5934;&#x7684;&#x4F8B;&#x5B50;" class="headerlink" title="&#x5B9E;&#x73B0;&#x6587;&#x7AE0;&#x5F00;&#x5934;&#x7684;&#x4F8B;&#x5B50;"></a>&#x5B9E;&#x73B0;&#x6587;&#x7AE0;&#x5F00;&#x5934;&#x7684;&#x4F8B;&#x5B50;</h2><p>&#x884C;&#x6587;&#x81F3;&#x6B64;&#xFF0C;&#x57FA;&#x672C;&#x4E0A;&#x8BB2;&#x5B8C;&#x4E86;spring-retry&#x6846;&#x67B6;&#x5E94;&#x8BE5;&#x8BB2;&#x7684;&#x4E1C;&#x897F;&#x4E86;&#xFF0C;&#x4E0B;&#x9762;&#x6211;&#x4EEC;&#x6765;&#x56DE;&#x7B54;&#x4E00;&#x4E0B;&#x6587;&#x7AE0;&#x5F00;&#x5934;&#x7684;d&#x95EE;&#x9898;&#xFF1A;&#x5982;&#x4F55;&#x5B9E;&#x73B0;XXXFacade&#x8C03;&#x7528;&#x5931;&#x8D25;&#x540E;&#xFF0C;&#x7B49;20&#x6BEB;&#x79D2;&#x5728;&#x91CD;&#x8BD5;&#xFF0C;&#x4E00;&#x5171;&#x91CD;&#x8BD5;5&#x6B21;&#xFF0C;&#x5982;&#x679C;&#x4F9D;&#x65E7;&#x5931;&#x8D25;&#x5219;&#x6253;&#x4E00;&#x6761;&#x65E5;&#x5FD7;&#x51FA;&#x6765;&#x3002;&#x901A;&#x8FC7;&#x672C;&#x6587;&#x7684;&#x8BB2;&#x89E3;&#xFF0C;&#x6211;&#x60F3;&#x4F60;&#x5E94;&#x8BE5;&#x80FD;&#x591F;&#x8F7B;&#x677E;&#x5E76;&#x4E14;&#x4F18;&#x96C5;&#x7684;&#x5B9E;&#x73B0;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Throwable </span>{</div><div class="line">    FixedBackOffPolicy backOffPolicy = <span class="keyword">new</span> FixedBackOffPolicy();</div><div class="line">    backOffPolicy.setBackOffPeriod(<span class="number">20</span>);</div><div class="line">    template.setBackOffPolicy(backOffPolicy);</div><div class="line">    template.setRetryPolicy(<span class="keyword">new</span> SimpleRetryPolicy(<span class="number">5</span>));</div><div class="line"></div><div class="line">    <span class="keyword">new</span> RetryTemplate().execute(context -&gt; remoteInvoke(), context -&gt; {System.out.println(<span class="string">&quot;log here&quot;</span>); <span class="keyword">return</span> <span class="string">&quot;recovery&quot;</span>;});</div><div class="line">}</div></pre></td></tr></table></figure>
+<p><strong>&#x6CE8;&#xFF1A;&#x5982;&#x679C;&#x8FD9;&#x4E2A;&#x4F8B;&#x5B50;&#x91C7;&#x7528;spring xml&#x914D;&#x7F6E;&#x65B9;&#x5F0F;&#x5C06;&#x4F1A;&#x66F4;&#x52A0;&#x7B80;&#x6D01;&#xFF0C;&#x7B56;&#x7565;&#x7684;&#x521B;&#x5EFA;&#x4F60;&#x90FD;&#x7701;&#x4E86;</strong><br></p>
+<h2 id="&#x53C2;&#x8003;&#x8D44;&#x6599;"><a href="#&#x53C2;&#x8003;&#x8D44;&#x6599;" class="headerlink" title="&#x53C2;&#x8003;&#x8D44;&#x6599;"></a>&#x53C2;&#x8003;&#x8D44;&#x6599;</h2><ul>
+<li><a href="https://github.com/spring-projects/spring-retry" target="_blank" rel="external">srping-try github</a></li>
+</ul>
+
+                
+  <!-- css -->
+  <style type="text/css">
+      .center {
+          text-align: center;
+      }
+      .hidden {
+          display: none;
+      }
+    .donate_bar a.btn_donate{
+      display: inline-block;
+      width: 82px;
+      height: 82px;
+      background: url("http://7xsl28.com1.z0.glb.clouddn.com/btn_reward.gif") no-repeat;
+      _background: url("http://7xsl28.com1.z0.glb.clouddn.com/btn_reward.gif") no-repeat;
+
+      <!-- http://img.t.sinajs.cn/t5/style/images/apps_PRF/e_media/btn_reward.gif
+           因为本 hexo 生成的博客所用的 theme 的 a:hover 带动画效果，
+         为了在让打赏按钮显示效果正常 而 添加了以下几行 css，
+         嵌入其它博客时不一定要它们。 -->
+      -webkit-transition: background 0s;
+      -moz-transition: background 0s;
+      -o-transition: background 0s;
+      -ms-transition: background 0s;
+      transition: background 0s;
+      <!-- /让打赏按钮的效果显示正常 而 添加的几行 css 到此结束 -->
+    }
+
+    .donate_bar a.btn_donate:hover{ background-position: 0px -82px;}
+    .donate_bar .donate_txt {
+      display: block;
+      color: #9d9d9d;
+      font: 14px/2 "Microsoft Yahei";
+    }
+    .bold{ font-weight: bold; }
+  </style>
+  <!-- /css -->
+
+    <!-- Donate Module -->
+  <div id="donate_module">
+
+  <!-- btn_donate & tips -->
+  <div id="donate_board" class="donate_bar center">
+      <br>
+      ------------------------------------------------------------------------------------------------------------------------------
+      <br>
+    <a id="btn_donate" class="btn_donate" target="_self" href="javascript:;" title="Donate 打赏"></a>
+    <span class="donate_txt">
+      Enjoy it ? Donate me !  欣赏此文？求鼓励，求支持！
+    </span>
+
+
+  </div>
+  <!-- /btn_donate & tips -->
+
+  <!-- donate guide -->
+
+  <div id="donate_guide" class="donate_bar center hidden">
+        <br>
+        <br>
+
+    <a href="/img/wechat_pay.jpg" title="用微信扫一扫哦~" class="fancybox" rel="article0">
+      <img src="/img/wechat_pay.jpg" title="微信打赏 Colin" height="190px" width="auto"/>
+    </a>
+
+        &nbsp;&nbsp;
+
+    <!-- <a href="undefined" title="用支付宝扫一扫即可~" class="fancybox" rel="article0">
+      <img src="undefined" title="支付宝打赏 Colin" height="190px" width="auto"/>
+    </a> -->
+
+    <span class="donate_txt">
+      Enjoy it ? Donate me !  欣赏此文？求鼓励，求支持！
+    </span>
+
+  </div>
+  <!-- /donate guide -->
+
+  <!-- donate script -->
+  <script type="text/javascript">
+    document.getElementById('btn_donate').onclick = function() {
+      $('#donate_board').addClass('hidden');
+      $('#donate_guide').removeClass('hidden');
+    }
+
+    function donate_on_web(){
+      $('#donate').submit();
+        }
+
+    var original_window_onload = window.onload;
+        window.onload = function () {
+            if (original_window_onload) {
+                original_window_onload();
+            }
+            document.getElementById('donate_board_wdg').className = 'hidden';
+    }
+  </script>
+  <!-- /donate script -->
+</div>
+<!-- /Donate Module -->
+   
+
+ </br>
+ </br>
+
+             
+                <ul class="pager">
+                    
+                        <li class="previous">
+                            <a href="/atomix/" data-toggle="tooltip" data-placement="top" title="分布式强一致性框架Atomix学习">&larr; Previous Post</a>
+                        </li>
+                    
+                    
+                        <li class="next">
+                            <a href="/disruptor/" data-toggle="tooltip" data-placement="top" title="高性能队列disruptor浅析">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#框架" title="框架">框架</a>
+                        
+                          <a class="tag" href="/tags/#spring" title="spring">spring</a>
+                        
+                          <a class="tag" href="/tags/#服务重试" title="服务重试">服务重试</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="http://youdang.github.io" target="_blank">youdang&#39;s Blog</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("http://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'always',
+          placement: 'right',
+          icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/TooBusyTooLazy">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/zhang-yan-32-14">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/kriszhang123">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/zhangyan985">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/kris-zhang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/岩-张-83aa7a121">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Kris&#39; Blog 2017 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("kriszhang.com/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("http://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+<script>
+    // dynamic User by Hux
+    var _gaId = 'UA-49627206-1';
+    var _gaDomain = 'huangxuan.me';
+
+    // Originial
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+
+<!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4cc1f2d8f3067386cc5cdb626a202900';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "//hm.baidu.com/hm.js?" + _baId;
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="kriszhang.com/head.jpg" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work --><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+
+</body>
+
+</html>

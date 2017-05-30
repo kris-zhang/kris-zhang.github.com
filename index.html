@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="两只bug鸣翠柳，一行代码上西天">
+    <meta name="keyword"  content="算法 大数据 系统架构 机器学习 Java技术 中间件 高并发">
+    <link rel="shortcut icon" href="/img/favicon.ico">
+    <meta name="baidu-site-verification" content="I9urFMjvnH" />
+<meta name="google-site-verification" content="kOhH4Y18J0KFSbfkCwJhRGpHFvY1aoSeyVci6XDCxAs" />
+    <title>
+        
+          Kris的博客 | Kris&#39; Blog
+        
+    </title>
+
+    <link rel="canonical" href="kriszhang.com/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="/css/syntax.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="http://cdn.staticfile.org/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id='wx_pic' style='margin:0 auto;display:none;'>
+    <img src='undefined' />
+  </div>
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Kris&#39; Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    <!-- Page Header -->
+<header class="intro-header" style="background-image: url('/img/home-bg.jpg')">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 ">
+                <div class="site-heading">
+                    <h1>Kris&#39; Blog</h1>
+                    <!--<hr class="small">-->
+                    <span class="subheading">To Be A Lean Developer!</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?e06e6395b235a8f00dd89c228abbb3f1";
+  var s = document.getElementsByTagName("script")[0];
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+</header>
+
+
+
+<!-- Main Content -->
+<div class="container">
+    <div class="row">
+        
+
+<!-- USE SIDEBAR -->
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-1
+                col-md-8 col-md-offset-1
+                col-sm-12
+                col-xs-12
+                post-container
+            ">
+
+                <!-- Main Content -->
+
+
+<div class="post-preview">
+
+    <a href="/atomix/">
+        <h2 class="post-title">
+            分布式强一致性框架Atomix学习
+        </h2>
+        <h3 class="post-subtitle">
+            
+        </h3>
+        <div class="post-content-preview">
+            &#x4E00;&#x81F4;&#x6027;&#x662F;&#x5206;&#x5E03;&#x5F0F;&#x7CFB;&#x7EDF;&#x6C38;&#x6052;&#x7684;&#x4E3B;&#x9898;&#x3002;&#x6839;&#x636E;CAP&#x7406;&#x8BBA;&#xFF0C;&#x4E00;&#x81F4;&#x6027;&#x3001;&#......
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by kris.zhang on
+        2017-05-30
+    </p>
+
+</div>
+<hr>
+
+<div class="post-preview">
+
+    <a href="/spring-retry/">
+        <h2 class="post-title">
+            利用Spring-Retry定制化你的RPC重试
+        </h2>
+        <h3 class="post-subtitle">
+            
+        </h3>
+        <div class="post-content-preview">
+            &#x5047;&#x8BBE;A,B&#x4E24;&#x4E2A;&#x7CFB;&#x7EDF;&#xFF0C;&#x5F53;A-&gt;B&#x7684;&#x8C03;&#x7528;&#x5931;&#x8D25;&#x65F6;&#xFF0C;&#x6211;&#x4EEC;&#x53EF;&#x4EE5;&#x91C7;&#x53D6;&#x4F55;&#x79CD;&#x......
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by kris.zhang on
+        2017-05-21
+    </p>
+
+</div>
+<hr>
+
+<div class="post-preview">
+
+    <a href="/disruptor/">
+        <h2 class="post-title">
+            高性能队列disruptor浅析
+        </h2>
+        <h3 class="post-subtitle">
+            
+        </h3>
+        <div class="post-content-preview">
+            &#x5468;&#x672B;&#x5728;&#x5BB6;&#x95F2;&#x6765;&#x65E0;&#x4E8B;&#xFF0C;&#x7FFB;&#x770B;&#x6280;&#x672F;&#x6587;&#x7AE0;&#xFF0C;&#x53D1;&#x73B0;&#x4E00;&#x4E2A;&#x53EB;&#x505A;disruptor&#x7684;&#x9......
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by kris.zhang on
+        2017-05-14
+    </p>
+
+</div>
+<hr>
+
+<div class="post-preview">
+
+    <a href="/object-pool/">
+        <h2 class="post-title">
+            探索对象池技术
+        </h2>
+        <h3 class="post-subtitle">
+            Apache Commons Pool实现分析
+        </h3>
+        <div class="post-content-preview">
+            
+&#x6000;&#x624D;&#x5C31;&#x8C61;&#x6000;&#x5B55;&#xFF0C;&#x65F6;&#x95F4;&#x4E45;&#x4E86;&#x4F1A;&#x8BA9;&#x4EBA;&#x770B;&#x51FA;&#x6765;
+
+
+&#x5BF9;&#x8C61;&#x6C60;&#x6280;&#x672F;&#x662F;&#x4E00;&......
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by kris.zhang on
+        2016-08-17
+    </p>
+
+</div>
+<hr>
+
+<div class="post-preview">
+
+    <a href="/building-mircoservice/">
+        <h2 class="post-title">
+            《微服务设计》读书笔记
+        </h2>
+        <h3 class="post-subtitle">
+            Building Mircoservices
+        </h3>
+        <div class="post-content-preview">
+            &#x5168;&#x4E66;&#x53EF;&#x4EE5;&#x5206;&#x4E3A;&#x4E09;&#x5927;&#x5757;&#xFF1A;
+
+&#x601D;&#x60F3;&#xFF1A;&#x9610;&#x660E;&#x5FAE;&#x670D;&#x52A1;&#x7684;&#x610F;&#x4E49;&#xFF0C;&#x6F14;&#x5316;&#x......
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by kris.zhang on
+        2016-08-03
+    </p>
+
+</div>
+<hr>
+
+<div class="post-preview">
+
+    <a href="/hystrix_defend_your_webapp/">
+        <h2 class="post-title">
+            使用hystrix保护你的应用
+        </h2>
+        <h3 class="post-subtitle">
+            hystrix入门
+        </h3>
+        <div class="post-content-preview">
+            
+&#x51E1;&#x662F;&#x53EF;&#x80FD;&#x51FA;&#x9519;&#x7684;&#x4E8B;&#x5FC5;&#x5B9A;&#x4F1A;&#x51FA;&#x9519;
+
+
+hystrix([h&#x26A;st&apos;r&#x26A;ks])&#x662F;&#x8C6A;&#x732A;&#x7684;&#x610F;&#x601D;&#x3......
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by kris.zhang on
+        2016-07-30
+    </p>
+
+</div>
+<hr>
+
+<div class="post-preview">
+
+    <a href="/motan-rpc-impl/">
+        <h2 class="post-title">
+            从motan看RPC框架设计
+        </h2>
+        <h3 class="post-subtitle">
+            motan源码导读
+        </h3>
+        <div class="post-content-preview">
+            
+&#x8BA1;&#x7B97;&#x673A;&#x79D1;&#x5B66;&#x9886;&#x57DF;&#x7684;&#x4EFB;&#x4F55;&#x95EE;&#x9898;&#x90FD;&#x53EF;&#x4EE5;&#x901A;&#x8FC7;&#x589E;&#x52A0;&#x4E00;&#x4E2A;&#x95F4;&#x63A5;&#x7684;&#x4......
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by kris.zhang on
+        2016-07-21
+    </p>
+
+</div>
+<hr>
+
+<div class="post-preview">
+
+    <a href="/shaizi_google/">
+        <h2 class="post-title">
+            一个有趣的骰子问题
+        </h2>
+        <h3 class="post-subtitle">
+            google面试题
+        </h3>
+        <div class="post-content-preview">
+            
+&#x5982;&#x679C;&#x4E00;&#x628A;&#x67AA;&#x91CC;&#x6709;100&#x4E07;&#x4E2A;&#x67AA;&#x819B;&#x4F4D;&#xFF0C;&#x4F46;&#x91CC;&#x9762;&#x5374;&#x53EA;&#x6709;&#x4E00;&#x53D1;&#x5B50;&#x5F39;&#x3002;&......
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by kris.zhang on
+        2016-07-17
+    </p>
+
+</div>
+<hr>
+
+<div class="post-preview">
+
+    <a href="/my_first_blog/">
+        <h2 class="post-title">
+            这是我的第一篇博客
+        </h2>
+        <h3 class="post-subtitle">
+            
+        </h3>
+        <div class="post-content-preview">
+            
+&#x201C;Yeah It&#x2019;s on.&#x201D;
+
+&#x81EA;&#x4ECE;&#x5DE5;&#x4F5C;&#x4EE5;&#x540E;&#xFF0C;&#x6211;&#x7684;&#x5927;&#x91CF;&#x6587;&#x7AE0;&#x90FD;&#x662F;&#x5199;&#x5728;&#x529E;&#x516C;&#x7F5......
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by kris.zhang on
+        2016-07-15
+    </p>
+
+</div>
+<hr>
+
+
+
+<!-- Pager -->
+
+<ul class="pager">
+    
+    
+</ul>
+
+            </div>
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-3 col-lg-offset-0
+                col-md-3 col-md-offset-0
+                col-sm-12
+                col-xs-12
+                sidebar-container
+            ">
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                        
+                            
+                            <a href="/tags/#算法" title="算法" rel="2">算法</a>
+                            
+                        
+                            
+                            <a href="/tags/#分布式系统" title="分布式系统" rel="1">分布式系统</a>
+                            
+                        
+                            
+                            <a href="/tags/#分布式一致性" title="分布式一致性" rel="1">分布式一致性</a>
+                            
+                        
+                            
+                            <a href="/tags/#disruptor" title="disruptor" rel="1">disruptor</a>
+                            
+                        
+                            
+                            <a href="/tags/#高性能队列" title="高性能队列" rel="1">高性能队列</a>
+                            
+                        
+                            
+                            <a href="/tags/#框架" title="框架" rel="4">框架</a>
+                            
+                        
+                            
+                            <a href="/tags/#开源" title="开源" rel="3">开源</a>
+                            
+                        
+                            
+                            <a href="/tags/#hystrix" title="hystrix" rel="1">hystrix</a>
+                            
+                        
+                            
+                            <a href="/tags/#熔断器" title="熔断器" rel="1">熔断器</a>
+                            
+                        
+                            
+                            <a href="/tags/#LIFE" title="LIFE" rel="1">LIFE</a>
+                            
+                        
+                            
+                            <a href="/tags/#RPC" title="RPC" rel="1">RPC</a>
+                            
+                        
+                            
+                            <a href="/tags/#微服务" title="微服务" rel="1">微服务</a>
+                            
+                        
+                            
+                            <a href="/tags/#读书笔记" title="读书笔记" rel="1">读书笔记</a>
+                            
+                        
+                            
+                            <a href="/tags/#面试题" title="面试题" rel="1">面试题</a>
+                            
+                        
+                            
+                            <a href="/tags/#对象池" title="对象池" rel="1">对象池</a>
+                            
+                        
+                            
+                            <a href="/tags/#spring" title="spring" rel="1">spring</a>
+                            
+                        
+                            
+                            <a href="/tags/#服务重试" title="服务重试" rel="1">服务重试</a>
+                            
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Short About -->
+                <section class="visible-md visible-lg">
+                    <hr><h5><a href="/about/">ABOUT ME</a></h5>
+                    <div class="short-about">
+
+                        
+                            <img src="/img/avatar.png" />
+                        
+
+                        
+                            <p>两只bug鸣翠柳，一行代码上西天</p>
+                        
+
+                        <!-- SNS Link -->
+                        <ul class="list-inline">
+                            
+                            
+                                <li>
+                                    <a target="_blank" href="https://twitter.com/TooBusyTooLazy">
+                                        <span class="fa-stack fa-lg">
+                                            <i class="fa fa-circle fa-stack-2x"></i>
+                                            <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                                        </span>
+                                    </a>
+                                </li>
+                            
+                            
+                                <li>
+                                    <a target="_blank" href="https://www.zhihu.com/people/zhang-yan-32-14">
+                                        <span class="fa-stack fa-lg">
+                                            <i class="fa fa-circle fa-stack-2x"></i>
+                                            <i class="fa  fa-stack-1x fa-inverse">知</i>
+                                        </span>
+                                    </a>
+                                </li>
+                            
+
+                            
+                                <li>
+                                    <a target="_blank" href="http://weibo.com/kriszhang123">
+                                        <span class="fa-stack fa-lg">
+                                            <i class="fa fa-circle fa-stack-2x"></i>
+                                            <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                                        </span>
+                                    </a>
+                                </li>
+                            
+
+                            
+                                <li>
+                                    <a target="_blank" href="https://www.facebook.com/zhangyan985">
+                                        <span class="fa-stack fa-lg">
+                                            <i class="fa fa-circle fa-stack-2x"></i>
+                                            <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                                        </span>
+                                    </a>
+                                </li>
+                            
+
+                            
+                                <li>
+                                    <a target="_blank"  href="https://github.com/kris-zhang">
+                                        <span class="fa-stack fa-lg">
+                                            <i class="fa fa-circle fa-stack-2x"></i>
+                                            <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                                        </span>
+                                    </a>
+                                </li>
+                            
+
+
+                            
+                                <li>
+                                    <a target="_blank"  href="https://www.linkedin.com/in/岩-张-83aa7a121">
+                                        <span class="fa-stack fa-lg">
+                                            <i class="fa fa-circle fa-stack-2x"></i>
+                                            <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                                        </span>
+                                    </a>
+                                </li>
+                            
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="http://youdang.github.io" target="_blank">youdang&#39;s Blog</a></li>
+                    
+                </ul>
+                
+            </div>
+        
+    </div>
+</div>
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/TooBusyTooLazy">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/zhang-yan-32-14">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/kriszhang123">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/zhangyan985">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/kris-zhang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/岩-张-83aa7a121">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Kris&#39; Blog 2017 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("kriszhang.com/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("http://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+<script>
+    // dynamic User by Hux
+    var _gaId = 'UA-49627206-1';
+    var _gaDomain = 'huangxuan.me';
+
+    // Originial
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+
+<!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4cc1f2d8f3067386cc5cdb626a202900';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "//hm.baidu.com/hm.js?" + _baId;
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="kriszhang.com/undefined" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work --><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+
+</body>
+
+</html>

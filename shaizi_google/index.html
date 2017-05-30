@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="两只bug鸣翠柳，一行代码上西天">
+    <meta name="keyword"  content="算法 大数据 系统架构 机器学习 Java技术 中间件 高并发">
+    <link rel="shortcut icon" href="/img/favicon.ico">
+    <meta name="baidu-site-verification" content="I9urFMjvnH" />
+<meta name="google-site-verification" content="kOhH4Y18J0KFSbfkCwJhRGpHFvY1aoSeyVci6XDCxAs" />
+    <title>
+        
+          一个有趣的骰子问题 - Kris的博客 | Kris&#39; Blog
+        
+    </title>
+
+    <link rel="canonical" href="kriszhang.com/shaizi_google/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="/css/syntax.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="http://cdn.staticfile.org/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id='wx_pic' style='margin:0 auto;display:none;'>
+    <img src='lastone.png' />
+  </div>
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Kris&#39; Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="kriszhang.com/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('head.jpg')
+    }
+</style>
+<header class="intro-header" >
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#算法" title="算法">算法</a>
+                        
+                          <a class="tag" href="/tags/#面试题" title="面试题">面试题</a>
+                        
+                    </div>
+                    <h1>一个有趣的骰子问题</h1>
+                    <h2 class="subheading">google面试题</h2>
+                    <span class="meta">
+                        Posted by kris.zhang on
+                        2016-07-17
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "//hm.baidu.com/hm.js?e06e6395b235a8f00dd89c228abbb3f1";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+    </script>
+</header>
+
+<!-- Post Content -->
+<article>
+  <div id='wx_pic' style='margin:0 auto;display:none;'>
+    <img src='lastone.png' />
+  </div>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <blockquote>
+<p>&#x5982;&#x679C;&#x4E00;&#x628A;&#x67AA;&#x91CC;&#x6709;100&#x4E07;&#x4E2A;&#x67AA;&#x819B;&#x4F4D;&#xFF0C;&#x4F46;&#x91CC;&#x9762;&#x5374;&#x53EA;&#x6709;&#x4E00;&#x53D1;&#x5B50;&#x5F39;&#x3002;&#x4F60;&#x95EE;&#x6211;&#x8981;&#x591A;&#x5C11;&#x94B1;&#x624D;&#x80AF;&#x7528;&#x5B83;&#x671D;&#x81EA;&#x5DF1;&#x5F00;&#x4E00;&#x67AA;&#xFF1F;&#x6211;&#x544A;&#x8BC9;&#x4F60;&#xFF0C;&#x7ED9;&#x6211;&#x591A;&#x5C11;&#x94B1;&#x6211;&#x4E5F;&#x4E0D;&#x5E72;&#xFF01;</p>
+</blockquote>
+<p><img src="/shaizi_google/shaizi.jpg" alt="&#x7B5B;&#x5B50;&#x56FE;&#x7247;"></p>
+<p>&#x5148;&#x6765;&#x770B;&#x4E00;&#x9053;&#x7B80;&#x5355;&#x7684;&#x63B7;&#x9AB0;&#x5B50;&#x95EE;&#x9898;&#xFF1A;</p>
+<blockquote>
+<p>&#x7ED9;&#x4F60;&#x4E24;&#x9897;&#x9AB0;&#x5B50;&#xFF08;&#x5F53;&#x7136;&#x6BCF;&#x4E2A;&#x9AB0;&#x5B50;6&#x4E2A;&#x9762;&#xFF09;&#xFF0C;&#x95EE;&#x5F53;&#x4E24;&#x4E2A;&#x9AB0;&#x5B50;&#x63B7;&#x51FA;&#x7684;&#x6570;&#x5B57;&#x548C;&#x5927;&#x4E8E;10&#x7684;&#x6982;&#x7387;&#x6709;&#x591A;&#x5927;&#xFF1F;</p>
+</blockquote>
+<p>&#x8FD9;&#x662F;&#x4E00;&#x9053;&#x975E;&#x5E38;&#x7B80;&#x5355;&#x7684;&#x6982;&#x7387;&#x9898;&#xFF0C;&#x6211;&#x4EEC;&#x552F;&#x4E00;&#x9700;&#x8981;&#x6CE8;&#x610F;&#x7684;&#x662F;&#xFF0C;&#x9488;&#x5BF9;&#x6BCF;&#x4E00;&#x4E2A;sum&#xFF08;&#x6BD4;&#x5982;10&#xFF09;&#xFF0C;&#x53EF;&#x80FD;&#x6709;&#x591A;&#x79CD;&#x7EC4;&#x5408;&#xFF08;&#x6BD4;&#x5982;4+6, 5+5&#xFF09;&#xFF0C;&#x56E0;&#x6B64;&#xFF0C;&#x6211;&#x4EEC;&#x8FD9;&#x91CC;&#x53EA;&#x9700;&#x8981;&#x7B80;&#x5355;&#x7A77;&#x4E3E;&#x4E00;&#x4E0B;&#x5373;&#x53EF;&#xFF1A;</p>
+<table>
+<thead>
+<tr>
+<th>&#x4E24;&#x4E2A;&#x9AB0;&#x5B50;&#x7684;&#x603B;&#x548C;</th>
+<th>&#x6240;&#x6709;&#x53EF;&#x80FD;&#x7684;&#x7EC4;&#x5408;&#x6570;</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2</td>
+<td>1</td>
+</tr>
+<tr>
+<td>3</td>
+<td>2</td>
+</tr>
+<tr>
+<td>4</td>
+<td>3</td>
+</tr>
+<tr>
+<td>5</td>
+<td>4</td>
+</tr>
+<tr>
+<td>6</td>
+<td>5</td>
+</tr>
+<tr>
+<td>7</td>
+<td>6</td>
+</tr>
+<tr>
+<td>8</td>
+<td>5</td>
+</tr>
+<tr>
+<td>9</td>
+<td>4</td>
+</tr>
+<tr>
+<td>10</td>
+<td>3</td>
+</tr>
+<tr>
+<td><em>11</em></td>
+<td><em>2</em></td>
+</tr>
+<tr>
+<td><em>12</em></td>
+<td><em>1</em></td>
+</tr>
+</tbody>
+</table>
+<p>&#x6240;&#x6709;&#x53EF;&#x80FD;&#x60C5;&#x51B5;&#x7684;&#x603B;&#x548C;&#x662F;36(1+2+3+4+5+6+5+4+3+2+1)&#xFF0C;&#x9488;&#x5BF9;&#x5927;&#x4E8E;10&#x7684;&#x60C5;&#x51B5;&#x662F;&#x63B7;&#x51FA;11&#x548C;12&#xFF0C;&#x90A3;&#x4E48;&#x4E00;&#x5171;&#x6709;3&#x79CD;(5-6,6-5,6-6)&#x3002;&#x6240;&#x4EE5;&#x4E0A;&#x9762;&#x95EE;&#x9898;&#x7684;&#x7B54;&#x6848;&#x5C31;&#x662F;&#xFF1A;<code>P(n|n&gt;10)=1/12</code>&#x3002;</p>
+<p>&#x4EE5;&#x4E0A;&#x95EE;&#x9898;&#x975E;&#x5E38;&#x7B80;&#x5355;&#xFF0C;&#x6709;&#x70B9;&#x6982;&#x7387;&#x57FA;&#x7840;&#x7684;&#x4EBA;&#x90FD;&#x53EF;&#x4EE5;&#x8F7B;&#x6613;&#x641E;&#x5B9A;&#x3002;&#x8FD9;&#x91CC;&#xFF0C;&#x5982;&#x679C;&#x6211;&#x4EEC;&#x66F4;&#x8FDB;&#x4E00;&#x6B65;&#xFF0C;&#x5C06;&#x8FD9;&#x4E2A;&#x95EE;&#x9898;&#x62BD;&#x8C61;&#x5982;&#x4E0B;&#xFF1A;</p>
+<blockquote>
+<p>&#x7ED9;&#x5B9A;n&#x4E2A;&#x8272;&#x5B50;&#xFF08;n&gt;=1)&#xFF0C;&#x6BCF;&#x4E2A;&#x9AB0;&#x5B50;&#x6709;m&#x4E2A;&#x9762;&#xFF0C;&#x6BCF;&#x4E00;&#x4E2A;&#x9762;&#x7684;&#x70B9;&#x6570;&#x5206;&#x522B;&#x8868;&#x793A;&#x4E3A;1&#x5230;m&#xFF08;&#x6BD4;&#x5982;m=10&#x4E2A;&#x9762;&#xFF0C;&#x90A3;&#x4E48;&#x8FD9;10&#x4E2A;&#x9762;&#x7684;&#x70B9;&#x6570;&#x5206;&#x522B;&#x662F;1,2,3&#x2026;.10&#xFF09;&#x3002;&#x7ED9;&#x5B9A;&#x4E00;&#x4E2A;sum&#xFF0C;&#x8868;&#x793A;&#x4E00;&#x6B21;&#x6295;&#x63B7;n&#x4E2A;&#x9AB0;&#x5B50;&#x7684;&#x6240;&#x6709;&#x6B63;&#x9762;&#x6570;&#x5B57;&#x603B;&#x548C;&#x3002;&#x90A3;&#x4E48;&#x4F60;&#x7ED9;&#x5B9A;&#x4E00;&#x4E2A;&#x6570;x&#xFF0C;&#x5982;&#x679C;sum&gt;x&#x5219;&#x8868;&#x793A;&#x4F60;&#x8D62;&#x4E86;&#xFF0C;&#x90A3;&#x4E48;&#x95EE;&#x4F60;&#x8D62;&#x7684;&#x6982;&#x7387;&#x6709;&#x591A;&#x5927;&#xFF1F;</p>
+</blockquote>
+<p>&#x4E00;&#x65E6;&#x62BD;&#x8C61;&#x5316;&#x4EE5;&#x540E;&#xFF0C;&#x5C31;&#x4F1A;&#x53D1;&#x73B0;&#xFF0C;&#x4E0A;&#x9762;&#x90A3;&#x9053;&#x7B80;&#x5355;&#x95EE;&#x9898;&#x5B9E;&#x9645;&#x4E0A;&#x662F;&#x6B64;&#x95EE;&#x9898;&#x7684;&#x4E00;&#x79CD;&#x7279;&#x6B8A;&#x60C5;&#x51B5;&#xFF08;n=2,m=6,x=10)&#x3002;</p>
+<p>&#x5982;&#x4F55;&#x89E3;&#x51B3;&#x8FD9;&#x4E2A;&#x95EE;&#x9898;&#xFF1F;&#x6211;&#x4EEC;&#x5148;&#x5C06;&#x4E0A;&#x9762;&#x7684;&#x6587;&#x5B57;&#x8BED;&#x8A00;&#x63CF;&#x8FF0;&#xFF0C;&#x8F6C;&#x6362;&#x4E3A;&#x6570;&#x5B66;&#x8BED;&#x8A00;&#x63CF;&#x8FF0;&#xFF1A;</p>
+<blockquote>
+<ol>
+<li>&#x8BBE;&#x6295;&#x63B7;n&#x4E2A;m&#x9762;&#x7B5B;&#x5B50;&#x6B63;&#x9762;&#x603B;&#x548C;&#x5927;&#x4E8E;x&#x7684;&#x4E8B;&#x4EF6;&#x4E3A;A</li>
+<li>P(A)&#x5373;&#x4E3A;&#x6240;&#x6C42;&#x95EE;&#x9898;&#x7684;&#x89E3;</li>
+<li>&#x6BCF;&#x4E2A;&#x9762;&#x51FA;&#x73B0;&#x662F;&#x7B49;&#x53EF;&#x80FD;&#x4E8B;&#x4EF6;&#xFF0C;&#x5373;&#x6982;&#x7387;&#x4E3A;1/m</li>
+<li>P(sum=i)&#x8868;&#x793A;&#x63B7;&#x51FA;&#x6B63;&#x9762;&#x603B;&#x548C;&#x4E3A;i&#x7684;&#x6982;&#x7387;</li>
+</ol>
+</blockquote>
+<p>&#x90A3;&#x4E48;&#x95EE;&#x9898;&#x8F6C;&#x6362;&#x4E3A;&#xFF1A;</p>
+<p>$$P(A) = \sum_{i=1+x}^{m*n}{P(sum=i)}$$</p>
+<p>&#x4E0A;&#x9762;&#x516C;&#x5F0F;&#x8868;&#x793A;&#x7684;&#x610F;&#x601D;&#x662F;&#xFF0C;&#x5982;&#x679C;&#x6211;&#x4EEC;&#x60F3;&#x8D62;&#x5F97;&#x6E38;&#x620F;&#xFF0C;<em>&#x53EA;&#x9700;&#x8981;&#x5206;&#x522B;&#x8BA1;&#x7B97;&#x51FA;&#x63B7;&#x51FA;&#x603B;&#x548C;&#x5927;&#x4E8E;&#x7ED9;&#x5B9A;x&#x7684;&#x6982;&#x7387;&#x5373;&#x53EF;</em>&#xFF1B;&#x6BD4;&#x5982;&#x6211;&#x4EEC;&#x7ED9;&#x5B9A;&#x5411;&#x91CF;&#x5BF9; &lt; n=2,m=6,x=10 &gt; &#x90A3;&#x4E48;&#x60F3;&#x8981;&#x8D62;&#x5F97;&#x6E38;&#x620F;&#xFF0C;&#x6211;&#x4EEC;&#x9700;&#x8981;&#x77E5;&#x9053;&#x63B7;&#x51FA;11&#x548C;12&#x7684;&#x6982;&#x7387;&#x5206;&#x522B;&#x662F;&#x591A;&#x5C11;&#xFF0C;&#x628A;&#x4ED6;&#x4EEC;&#x76F8;&#x52A0;&#xFF0C;&#x5C31;&#x662F;&#x6211;&#x4EEC;&#x80FD;&#x591F;&#x8D62;&#x7684;&#x6982;&#x7387;&#x4E86;&#xFF0C;&#x5373;<code>P(sum=10+1=11)+P(sum=10+2=12)</code>&#x7684;&#x6982;&#x7387;&#x3002;</p>
+<p>&#x90A3;&#x4E48;&#x4E0B;&#x4E00;&#x6B65;&#x6211;&#x4EEC;&#x5982;&#x4F55;&#x8BA1;&#x7B97;$P(sum=i)$&#x7684;&#x6982;&#x7387;&#x5462;&#xFF1F;&#x5373;&#x8BA1;&#x7B97;&#x7ED9;&#x5B9A;n&#x4E2A;m&#x9762;&#x8272;&#x5B50;&#xFF0C;&#x63B7;&#x51FA;&#x6B63;&#x9762;&#x603B;&#x548C;&#x4E3A;i&#x7684;&#x6982;&#x7387;&#x3002;&#x8FD9;&#x91CC;&#x5C31;&#x9700;&#x8981;&#x501F;&#x52A9;&#x9012;&#x5F52;&#x7684;&#x601D;&#x60F3;&#x3002;&#x6211;&#x4EEC;&#x8BBE;&#x5982;&#x4E0B;&#x51FD;&#x6570;&#xFF1A;$f(n,m,x)$ &#x8868;&#x793A;n&#x4E2A;m&#x9762;&#x9AB0;&#x5B50;&#x63B7;&#x51FA;&#x603B;&#x548C;&#x4E3A;x&#x7684;&#x6240;&#x6709;&#x53EF;&#x80FD;&#x7684;&#x7EC4;&#x5408;&#x6570;&#xFF08;&#x60F3;&#x4E00;&#x4E0B;&#x6587;&#x7AE0;&#x5F00;&#x5934;&#x7684;&#x90A3;&#x4E2A;&#x4F8B;&#x5B50;&#xFF09;&#x3002;&#x6211;&#x4EEC;&#x5047;&#x8BBE;&#x8FD9;&#x4E2A;&#x65F6;&#x5019;&#x5176;&#x4E2D;&#x6709;&#x4E00;&#x4E2A;&#x8272;&#x5B50;&#x63B7;&#x51FA;&#x4E86;k(1&lt;=k&lt;=m)&#xFF0C;&#x90A3;&#x4E48;&#x5269;&#x4E0B;&#x7684;&#x9AB0;&#x5B50;(n-1)&#xFF0C;&#x5C31;&#x9700;&#x8981;&#x63B7;&#x51FA;&#x603B;&#x548C;&#x4E3A;x-k&#x3002;&#x56E0;&#x6B64;&#x9012;&#x5F52;&#x8868;&#x793A;&#x6CD5;&#xFF1A;</p>
+<p>$$f(n,m,x)=\sum_{k=1}^{m}{f(n-1,m,x-k)}(n&gt;1,1&lt;=k&lt;=m)$$</p>
+<p>&#x9012;&#x5F52;&#x7EC8;&#x6B62;&#x6761;&#x4EF6;&#x4E3A;n=1&#xFF0C;&#x5373;&#x5F53;n=1&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x5982;&#x679C;x&gt;m&#x5219;&#x51FD;&#x6570;&#x4E3A;0&#xFF0C;x&lt;=m&#x5219;&#x4E3A;1&#xFF1A;</p>
+<p>$$f(1,m,x)=1(1&lt;=x&lt;=m)$$</p>
+<p>&#x6B64;&#x65F6;&#xFF0C;&#x6211;&#x4EEC;&#x5C31;&#x80FD;&#x591F;&#x901A;&#x8FC7;&#x9012;&#x5F52;&#x7684;&#x65B9;&#x5F0F;&#xFF0C;&#x6C42;&#x51FA;f(n,m,x)&#x51FD;&#x6570;&#x4E86;&#x3002;&#x6709;&#x4E86;f&#x51FD;&#x6570;&#xFF0C;&#x90A3;&#x4E48;&#x4E00;&#x5207;&#x987A;&#x5176;&#x81EA;&#x7136;&#x7684;&#x5F97;&#x5230;$P(sum=i)$ &#xFF0C;&#x8868;&#x793A;&#x5982;&#x4E0B;&#xFF1A;</p>
+<p>$$P(sum=i)=f(n, m, i)/\sum_{j=1}^{m*n}{f(n, m, j)}$$</p>
+<p>&#x6211;&#x4EEC;&#x53EF;&#x4EE5;&#x770B;&#x5230;$\sum_{j=1}^{m*n}{f(n, m, j)}$&#x9488;&#x5BF9;&#x6BCF;&#x4E00;&#x4E2A;$P(sum=i)$&#x90FD;&#x662F;&#x76F8;&#x540C;&#x7684;&#xFF0C;&#x56E0;&#x6B64;&#x53EA;&#x9700;&#x8981;&#x8BA1;&#x7B97;&#x4E00;&#x6B21;&#x5373;&#x53EF;&#xFF0C;&#x4ED6;&#x8868;&#x793A;&#x6240;&#x6709;&#x7684;&#x53EF;&#x80FD;&#x503C;&#x7684;&#x603B;&#x548C;&#x3002;</p>
+<p>&#x56E0;&#x6B64;&#x901A;&#x8FC7;&#x4E0A;&#x9762;&#x7684;&#x63A8;&#x5230;&#xFF0C;&#x6240;&#x6C42;&#x95EE;&#x9898;&#x6700;&#x540E;&#x5C31;&#x53D8;&#x6210;&#x4E86;&#x5982;&#x4E0B;&#x516C;&#x5F0F;&#xFF1A;</p>
+<p><img src="/shaizi_google/lastone.png" alt="latone"></p>
+<p>&#x6709;&#x4E86;&#x516C;&#x5F0F;&#x548C;&#x4E0A;&#x9762;&#x7684;&#x63A8;&#x7406;&#xFF0C;&#x6211;&#x4EEC;&#x5C31;&#x80FD;&#x591F;&#x901A;&#x8FC7;&#x4EE3;&#x7801;&#x6765;&#x89E3;&#x51B3;&#x8BE5;&#x95EE;&#x9898;&#x4E86;&#x3002;</p>
+<p>f&#x51FD;&#x6570;&#x7684;&#x4EE3;&#x7801;&#x5982;&#x4E0B;&#xFF1A;</p>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><div class="line"><span class="function"><span class="keyword">function</span> <span class="title">f</span>(<span class="params">n, m, x</span>) </span>{</div><div class="line">  <span class="keyword">if</span> (n == <span class="number">1</span>)</div><div class="line">    <span class="keyword">return</span> x &gt;= <span class="number">1</span> &amp;&amp; x&lt;=m ? <span class="number">1</span> : <span class="number">0</span>;</div><div class="line"></div><div class="line">  <span class="keyword">var</span> sum = <span class="number">0</span>;</div><div class="line"></div><div class="line">  <span class="keyword">for</span> (<span class="keyword">var</span> k = <span class="number">1</span>; k &lt;= m ; k++)</div><div class="line">    sum += f(n<span class="number">-1</span>, m, x - k);</div><div class="line"></div><div class="line">  <span class="keyword">return</span> sum;</div><div class="line">}</div></pre></td></tr></table></figure>
+<p>&#x540C;&#x7406;&#xFF0C;&#x6211;&#x4EEC;&#x4E5F;&#x5F88;&#x5BB9;&#x6613;&#x6C42;&#x5F97;<code>f(n,m,x+1) f(n,m,x+2) ... f(n,m,m*n)</code>&#xFF0C;&#x5373;&#x5927;&#x4E8E;x&#x7684;&#x6240;&#x6709;&#x53EF;&#x80FD;&#x60C5;&#x51B5;&#xFF1A;</p>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><div class="line"><span class="comment">//n&#x4E2A;&#x7B5B;&#x5B50;&#xFF0C;m&#x9762;&#xFF0C;&#x5927;&#x4E8E;&#x7ED9;&#x5B9A;x&#x7684;&#x53EF;&#x80FD;&#x603B;&#x4E2A;&#x6570;</span></div><div class="line"><span class="function"><span class="keyword">function</span> <span class="title">f_great_x</span>(<span class="params">n, m, x</span>) </span>{</div><div class="line">  <span class="keyword">var</span> sum = <span class="number">0</span>;</div><div class="line"></div><div class="line">  <span class="keyword">while</span>(x&lt;= m*n)</div><div class="line">    sum += f(n, m, ++x);</div><div class="line"></div><div class="line">  <span class="keyword">return</span> sum;</div><div class="line">}</div></pre></td></tr></table></figure>
+<p>&#x56E0;&#x6B64;&#x6700;&#x540E;&#x7684;&#x4EE3;&#x7801;&#x4E3A;&#xFF1A;</p>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><div class="line"><span class="function"><span class="keyword">function</span> <span class="title">google</span>(<span class="params">n,m,x</span>) </span>{</div><div class="line"> <span class="comment">//f_great_x(n, m, 1)&#x8868;&#x793A;&#x6240;&#x6709;&#x53EF;&#x80FD;&#x60C5;&#x51B5;</span></div><div class="line"> <span class="keyword">return</span> f_great_x(n, m, x)/f_great_x(n, m, <span class="number">1</span>);</div><div class="line">}</div></pre></td></tr></table></figure>
+<h1 id="&#x540E;&#x8BB0;"><a href="#&#x540E;&#x8BB0;" class="headerlink" title="&#x540E;&#x8BB0;"></a>&#x540E;&#x8BB0;</h1><p>&#x8FD9;&#x9053;&#x9898;&#x5B9E;&#x9645;&#x4E0A;&#x5E76;&#x4E0D;&#x96BE;&#xFF0C;&#x4E3B;&#x8981;&#x662F;&#x8003;&#x5BDF;&#x6211;&#x4EEC;&#x80FD;&#x5426;&#x5177;&#x6709;&#x62BD;&#x8C61;&#x601D;&#x7EF4;&#x548C;&#x53D1;&#x6563;&#x601D;&#x7EF4;&#x3002;&#x5BF9;&#x4E8E;&#x4E00;&#x822C;&#x6027;&#x95EE;&#x9898;&#xFF0C;&#x6211;&#x4EEC;&#x80FD;&#x591F;&#x5C06;&#x5B83;&#x63A8;&#x5E7F;&#x5230;&#x66F4;&#x52A0;&#x4E00;&#x822C;&#x7684;&#x60C5;&#x51B5;&#x5417;&#xFF1F;&#x62BD;&#x8C61;&#x601D;&#x7EF4;&#x81F3;&#x5173;&#x91CD;&#x8981;&#x3002;</p>
+<p>&#x6709;&#x4E9B;&#x4EBA;&#x8BF4;&#x4E86;&#xFF0C;&#x5F53;m&lt;=3&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x662F;&#x4E0D;&#x5B58;&#x5728;&#x7684;&#xFF0C;m=4&#x7684;&#x9525;&#x9762;&#x4F53;&#xFF0C;&#x6BCF;&#x4E2A;&#x9762;&#x88AB;&#x63B7;&#x5230;&#x7684;&#x6982;&#x7387;&#x4E5F;&#x4E0D;&#x662F;1/4&#x3002;&#x6211;&#x4EEC;&#x5176;&#x5B9E;&#x5927;&#x53EF;&#x4E0D;&#x5FC5;&#x8FFD;&#x7A76;&#x8FD9;&#x4E9B;&#x73B0;&#x5B9E;&#x95EE;&#x9898;&#xFF0C;&#x53EA;&#x9700;&#x8981;&#x53BB;&#x62BD;&#x8C61;&#x6210;&#x4E00;&#x822C;&#x60C5;&#x51B5;&#x5373;&#x53EF;&#x3002;</p>
+
+                
+  <!-- css -->
+  <style type="text/css">
+      .center {
+          text-align: center;
+      }
+      .hidden {
+          display: none;
+      }
+    .donate_bar a.btn_donate{
+      display: inline-block;
+      width: 82px;
+      height: 82px;
+      background: url("http://7xsl28.com1.z0.glb.clouddn.com/btn_reward.gif") no-repeat;
+      _background: url("http://7xsl28.com1.z0.glb.clouddn.com/btn_reward.gif") no-repeat;
+
+      <!-- http://img.t.sinajs.cn/t5/style/images/apps_PRF/e_media/btn_reward.gif
+           因为本 hexo 生成的博客所用的 theme 的 a:hover 带动画效果，
+         为了在让打赏按钮显示效果正常 而 添加了以下几行 css，
+         嵌入其它博客时不一定要它们。 -->
+      -webkit-transition: background 0s;
+      -moz-transition: background 0s;
+      -o-transition: background 0s;
+      -ms-transition: background 0s;
+      transition: background 0s;
+      <!-- /让打赏按钮的效果显示正常 而 添加的几行 css 到此结束 -->
+    }
+
+    .donate_bar a.btn_donate:hover{ background-position: 0px -82px;}
+    .donate_bar .donate_txt {
+      display: block;
+      color: #9d9d9d;
+      font: 14px/2 "Microsoft Yahei";
+    }
+    .bold{ font-weight: bold; }
+  </style>
+  <!-- /css -->
+
+    <!-- Donate Module -->
+  <div id="donate_module">
+
+  <!-- btn_donate & tips -->
+  <div id="donate_board" class="donate_bar center">
+      <br>
+      ------------------------------------------------------------------------------------------------------------------------------
+      <br>
+    <a id="btn_donate" class="btn_donate" target="_self" href="javascript:;" title="Donate 打赏"></a>
+    <span class="donate_txt">
+      Enjoy it ? Donate me !  欣赏此文？求鼓励，求支持！
+    </span>
+
+
+  </div>
+  <!-- /btn_donate & tips -->
+
+  <!-- donate guide -->
+
+  <div id="donate_guide" class="donate_bar center hidden">
+        <br>
+        <br>
+
+    <a href="/img/wechat_pay.jpg" title="用微信扫一扫哦~" class="fancybox" rel="article0">
+      <img src="/img/wechat_pay.jpg" title="微信打赏 Colin" height="190px" width="auto"/>
+    </a>
+
+        &nbsp;&nbsp;
+
+    <!-- <a href="undefined" title="用支付宝扫一扫即可~" class="fancybox" rel="article0">
+      <img src="undefined" title="支付宝打赏 Colin" height="190px" width="auto"/>
+    </a> -->
+
+    <span class="donate_txt">
+      Enjoy it ? Donate me !  欣赏此文？求鼓励，求支持！
+    </span>
+
+  </div>
+  <!-- /donate guide -->
+
+  <!-- donate script -->
+  <script type="text/javascript">
+    document.getElementById('btn_donate').onclick = function() {
+      $('#donate_board').addClass('hidden');
+      $('#donate_guide').removeClass('hidden');
+    }
+
+    function donate_on_web(){
+      $('#donate').submit();
+        }
+
+    var original_window_onload = window.onload;
+        window.onload = function () {
+            if (original_window_onload) {
+                original_window_onload();
+            }
+            document.getElementById('donate_board_wdg').className = 'hidden';
+    }
+  </script>
+  <!-- /donate script -->
+</div>
+<!-- /Donate Module -->
+   
+
+ </br>
+ </br>
+
+             
+                <ul class="pager">
+                    
+                        <li class="previous">
+                            <a href="/motan-rpc-impl/" data-toggle="tooltip" data-placement="top" title="从motan看RPC框架设计">&larr; Previous Post</a>
+                        </li>
+                    
+                    
+                        <li class="next">
+                            <a href="/my_first_blog/" data-toggle="tooltip" data-placement="top" title="这是我的第一篇博客">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#算法" title="算法">算法</a>
+                        
+                          <a class="tag" href="/tags/#面试题" title="面试题">面试题</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="http://youdang.github.io" target="_blank">youdang&#39;s Blog</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("http://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'always',
+          placement: 'right',
+          icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/TooBusyTooLazy">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/zhang-yan-32-14">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/kriszhang123">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/zhangyan985">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/kris-zhang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/岩-张-83aa7a121">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Kris&#39; Blog 2017 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("kriszhang.com/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("http://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+<script>
+    // dynamic User by Hux
+    var _gaId = 'UA-49627206-1';
+    var _gaDomain = 'huangxuan.me';
+
+    // Originial
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+
+<!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4cc1f2d8f3067386cc5cdb626a202900';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "//hm.baidu.com/hm.js?" + _baId;
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="kriszhang.com/lastone.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work --><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+
+</body>
+
+</html>

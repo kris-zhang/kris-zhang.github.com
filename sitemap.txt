@@ -1,0 +1,7 @@
+http://kriszhang.com
+http://kriszhang.com/building-mircoservice
+http://kriszhang.com/object-pool
+http://kriszhang.com/hystrix_defend_your_webapp
+http://kriszhang.com/motan-rpc-iml
+http://kriszhang.com/shaizi_google
+http://kriszhang.com/my_first_blog
