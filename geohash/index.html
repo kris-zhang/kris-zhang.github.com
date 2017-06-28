@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="两只bug鸣翠柳，一行代码上西天">
+    <meta name="keyword"  content="算法 大数据 系统架构 机器学习 Java技术 中间件 高并发">
+    <link rel="shortcut icon" href="/img/favicon.ico">
+    <meta name="baidu-site-verification" content="I9urFMjvnH" />
+<meta name="google-site-verification" content="kOhH4Y18J0KFSbfkCwJhRGpHFvY1aoSeyVci6XDCxAs" />
+    <title>
+        
+          关于周边位置搜索的小结 - Kris的博客 | Kris&#39; Blog
+        
+    </title>
+
+    <link rel="canonical" href="kriszhang.com/geohash/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="/css/syntax.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="http://cdn.staticfile.org/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id='wx_pic' style='margin:0 auto;display:none;'>
+    <img src='undefined' />
+  </div>
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Kris&#39; Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="kriszhang.com/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('head.jpg')
+    }
+</style>
+<header class="intro-header" >
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#空间索引" title="空间索引">空间索引</a>
+                        
+                          <a class="tag" href="/tags/#geohash" title="geohash">geohash</a>
+                        
+                    </div>
+                    <h1>关于周边位置搜索的小结</h1>
+                    <h2 class="subheading"></h2>
+                    <span class="meta">
+                        Posted by kris.zhang on
+                        2017-06-28
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "//hm.baidu.com/hm.js?e06e6395b235a8f00dd89c228abbb3f1";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+    </script>
+</header>
+
+<!-- Post Content -->
+<article>
+  <div id='wx_pic' style='margin:0 auto;display:none;'>
+    <img src='undefined' />
+  </div>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <blockquote>
+<p>&#x641C;&#x7D22;&#x5468;&#x8FB9;&#x6709;&#x54EA;&#x4E9B;&#x5E97;&#x94FA;&#xFF0C;&#x662F;&#x4E00;&#x4E2A;&#x6BD4;&#x8F83;&#x5E38;&#x89C1;&#x7684;&#x573A;&#x666F;&#x3002;&#x672C;&#x6587;&#x6982;&#x8981;&#x6027;&#x7684;&#x603B;&#x7ED3;&#x4E86;&#x4E00;&#x4E9B;&#x5904;&#x7406;&#x8BE5;&#x95EE;&#x9898;&#x7684;&#x5E38;&#x7528;&#x6280;&#x672F;&#x65B9;&#x6CD5;&#x3002;</p>
+</blockquote>
+<h2 id="&#x95EE;&#x9898;&#x63D0;&#x51FA;"><a href="#&#x95EE;&#x9898;&#x63D0;&#x51FA;" class="headerlink" title="&#x95EE;&#x9898;&#x63D0;&#x51FA;"></a>&#x95EE;&#x9898;&#x63D0;&#x51FA;</h2><p>o2o&#x5E94;&#x7528;&#x7ECF;&#x5E38;&#x4F1A;&#x6709;&#x6839;&#x636E;&#x4F60;&#x5F53;&#x524D;&#x4F4D;&#x7F6E;&#xFF0C;&#x5B9A;&#x4F4D;&#x9644;&#x8FD1;&#x6709;&#x54EA;&#x4E9B;&#x5E97;&#x94FA;&#x7684;&#x4E1A;&#x52A1;&#x573A;&#x666F;&#x3002;&#x90FD;&#x53EF;&#x4EE5;&#x62BD;&#x8C61;&#x6210;&#xFF1A;&#x7ED9;&#x5B9A;&#x6570;&#x636E;&#x96C6;500&#x4E07;&#x4E2A;POI&#x70B9;&#xFF0C;&#x518D;&#x7ED9;&#x5B9A;&#x7ECF;&#x7EAC;&#x5750;&#x6807;&#x70B9;&#xFF08;&#x6BD4;&#x5982;116.402831,39.916042&#xFF09;&#xFF0C;&#x6C42;&#x8BE5;&#x70B9;&#x5468;&#x56F4;1&#x516C;&#x91CC;&#x6709;&#x54EA;&#x4E9B;POI&#x5B58;&#x5728;&#x3002;</p>
+<h2 id="&#x89E3;&#x51B3;&#x65B9;&#x6848;"><a href="#&#x89E3;&#x51B3;&#x65B9;&#x6848;" class="headerlink" title="&#x89E3;&#x51B3;&#x65B9;&#x6848;"></a>&#x89E3;&#x51B3;&#x65B9;&#x6848;</h2><h3 id="&#x4E24;&#x70B9;&#x8DDD;&#x79BB;&#x7684;&#x8BA1;&#x7B97;"><a href="#&#x4E24;&#x70B9;&#x8DDD;&#x79BB;&#x7684;&#x8BA1;&#x7B97;" class="headerlink" title="&#x4E24;&#x70B9;&#x8DDD;&#x79BB;&#x7684;&#x8BA1;&#x7B97;"></a>&#x4E24;&#x70B9;&#x8DDD;&#x79BB;&#x7684;&#x8BA1;&#x7B97;</h3><p>&#x4ECE;&#x4E8C;&#x7EF4;&#x5E73;&#x9762;&#x89D2;&#x5EA6;&#x770B;&#xFF0C;&#x4E24;&#x4E2A;&#x70B9;&#x4E4B;&#x95F4;&#x7684;&#x8DDD;&#x79BB;&#x53EF;&#x4EE5;&#x76F4;&#x63A5;&#x901A;&#x8FC7;&#x8BA1;&#x7B97;&#x516C;&#x5F0F;&#x6C42;&#x5F97;&#x51FA;&#x6765;&#xFF1A;</p>
+<blockquote>
+<p><code>sqrt((x1-x2)^2 +( y1-y2)^2)</code></p>
+</blockquote>
+<p>&#x5982;&#x679C;&#x7CBE;&#x5EA6;&#x8981;&#x6C42;&#x4E0D;&#x9AD8;&#xFF0C;&#x8FFD;&#x6C42;&#x901F;&#x5EA6;&#xFF0C;&#x53EF;&#x76F4;&#x63A5;&#x901A;&#x8FC7;&#x4E0A;&#x9762;&#x516C;&#x5F0F;&#x8BA1;&#x7B97;&#x3002;&#x4F46;&#xFF0C;&#x5730;&#x7403;&#x662F;&#x5706;&#x7684;&#xFF0C;&#x6211;&#x4EEC;&#x9700;&#x8981;&#x8003;&#x8651;&#x7403;&#x9762;&#x4E0A;&#x4E24;&#x70B9;&#x7684;&#x8DDD;&#x79BB;&#x8BA1;&#x7B97;&#xFF0C;<a href="http://www.cnblogs.com/ycsfwhh/archive/2010/12/20/1911232.html" target="_blank" rel="external">&#x6709;&#x5F88;&#x591A;&#x6587;&#x7AE0;</a>&#x90FD;&#x5728;&#x8BF4;&#x8FD9;&#x4E2A;&#x4E8B;&#x60C5;&#xFF0C;&#x540C;&#x65F6;&#x5730;&#x7403;&#x4E5F;&#x53EA;&#x4E0D;&#x8FC7;&#x662F;&#x8FD1;&#x4F3C;&#x6B63;&#x7403;&#x4F53;&#xFF0C;&#x6B64;&#x65F6;&#x7CBE;&#x5EA6;&#x53EF;&#x4EE5;&#x6EE1;&#x8DB3;&#x4E00;&#x822C;&#x5546;&#x7528;&#x3002;&#x5982;&#x82E5;&#x8981;&#x6C42;&#x66F4;&#x9AD8;&#x7CBE;&#x5EA6;&#xFF0C;&#x5219;&#x9700;&#x901A;&#x8FC7;&#x692D;&#x7403;&#x4F53;&#x8BA1;&#x7B97;&#x516C;&#x5F0F;&#x8FDB;&#x884C;&#x8BA1;&#x7B97;&#x3002;&#x6211;&#x4EEC;&#x4E00;&#x822C;&#x53EF;&#x76F4;&#x63A5;&#x91C7;&#x7528;spatial4j&#x7C7B;&#x5E93;&#xFF0C;&#x8BE5;&#x7C7B;&#x5E93;&#x91C7;&#x7528;<code>Haversine</code>&#x8BA1;&#x7B97;&#x4E24;&#x70B9;&#x8DDD;&#x79BB;&#xFF0C;&#x7F8E;&#x56E2;&#x5BF9;&#x5176;&#x8FDB;&#x884C;&#x4E86;&#x5E94;&#x4F18;&#x5316;&#xFF0C;&#x63D0;&#x5347;&#x4E86;&#x5927;&#x7EA6;50%&#x7684;&#x6027;&#x80FD;&#xFF1A;<a href="http://tech.meituan.com/lucene-distance.html" target="_blank" rel="external">http://tech.meituan.com/lucene-distance.html</a></p>
+<h3 id="&#x66B4;&#x529B;&#x6CD5;"><a href="#&#x66B4;&#x529B;&#x6CD5;" class="headerlink" title="&#x66B4;&#x529B;&#x6CD5;"></a>&#x66B4;&#x529B;&#x6CD5;</h3><p>&#x66B4;&#x529B;&#x6CD5;&#x7684;&#x601D;&#x60F3;&#x662F;&#x7A77;&#x4E3E;&#x51FA;&#x6240;&#x6709;&#x76EE;&#x6807;&#x70B9;&#x4E0E;&#x539F;&#x70B9;&#x4E4B;&#x95F4;&#x7684;&#x8DDD;&#x79BB;&#xFF0C;&#x7136;&#x540E;&#x627E;&#x5230;&#x5C0F;&#x4E8E;1km&#x7684;&#x70B9;&#x96C6;&#x5408;&#xFF1A;</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><div class="line"><span class="keyword">for</span> point <span class="keyword">in</span> set:</div><div class="line">	distance = distanc(point, source)</div><div class="line">	<span class="keyword">if</span> distance &lt; <span class="number">1000</span>:</div><div class="line">		result.add(point);</div><div class="line"><span class="keyword">return</span> result;</div></pre></td></tr></table></figure>
+<p>&#x5F88;&#x660E;&#x663E;&#x8FD9;&#x79CD;&#x65B9;&#x6CD5;&#x53EA;&#x9002;&#x7528;&#x4E8E;&#x96C6;&#x5408;&#x4E2D;&#x53EA;&#x6709;&#x5C11;&#x91CF;poi&#x70B9;&#x7684;&#x573A;&#x666F;&#x3002;&#x4E3B;&#x8981;&#x4F5C;&#x7528;&#x5728;&#x4E8E;&#x8F85;&#x52A9;&#x5176;&#x4ED6;&#x7B97;&#x6CD5;&#x8FDB;&#x884C;&#x8DDD;&#x79BB;&#x7B5B;&#x9009;&#x3002;</p>
+<h3 id="&#x8FC7;&#x6EE4;&#x6CD5;"><a href="#&#x8FC7;&#x6EE4;&#x6CD5;" class="headerlink" title="&#x8FC7;&#x6EE4;&#x6CD5;"></a>&#x8FC7;&#x6EE4;&#x6CD5;</h3><p>&#x6211;&#x4EEC;&#x4E0D;&#x9700;&#x8981;&#x6BD4;&#x8F83;&#x6240;&#x6709;&#x7684;&#x70B9;&#xFF0C;&#x53EA;&#x9700;&#x8981;&#x7ED9;&#x5B9A;<code>&#x5916;&#x63A5;&#x6B63;&#x65B9;&#x5F62;</code>(2&#x516C;&#x91CC;*2&#x516C;&#x91CC;)&#xFF0C;&#x7136;&#x540E;&#x901A;&#x8FC7;&#x7ECF;&#x5EA6;&#x7EAC;&#x5EA6;&#x5750;&#x6807;&#x8FC7;&#x6EE4;&#xFF0C;&#x5C06;&#x6B63;&#x65B9;&#x5F62;&#x5185;&#x70B9;&#x8FC7;&#x6EE4;&#x51FA;&#x6765;&#x3002;</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><div class="line"><span class="keyword">select</span> <span class="keyword">id</span> <span class="keyword">from</span> poi_set <span class="keyword">where</span> lat <span class="keyword">between</span> xx <span class="keyword">and</span> xx <span class="keyword">and</span> lng <span class="keyword">between</span> yyy <span class="keyword">and</span> yyy</div></pre></td></tr></table></figure>
+<p>&#x6700;&#x540E;&#x6211;&#x4EEC;&#x5C06;&#x8FC7;&#x6EE4;&#x51FA;&#x6765;&#x7684;&#x70B9;&#x96C6;&#x4E0A;&#xFF0C;&#x8FD0;&#x884C;&#x66B4;&#x529B;&#x6CD5;&#x7B97;&#x6CD5;&#xFF0C;&#x7CBE;&#x786E;&#x7684;&#x7B97;&#x51FA;&#x5B9E;&#x9645;&#x7684;&#x8DDD;&#x79BB;&#x3002;&#x6211;&#x4EEC;&#x53D1;&#x73B0;&#xFF0C;&#x8FD9;&#x79CD;&#x8303;&#x56F4;&#x641C;&#x7D22;&#x662F;&#x53EF;&#x4EE5;&#x501F;&#x52A9;<code>btree&#x7D22;&#x5F15;</code>&#x4EE5;&#x52A0;&#x5FEB;&#x8303;&#x56F4;&#x641C;&#x7D22;&#x6548;&#x7387;&#x3002;&#x8FD9;&#x5DF2;&#x7ECF;&#x53EF;&#x4EE5;&#x5E94;&#x7528;&#x5230;&#x4E00;&#x822C;&#x7684;&#x5E94;&#x7528;&#x5F53;&#x4E2D;&#x4E86;&#xFF0C;&#x4F46;btree&#x7D22;&#x5F15;&#x6709;&#x5176;&#x95EE;&#x9898;&#xFF1A;</p>
+<ul>
+<li>&#x53EA;&#x80FD;&#x5BF9;&#x7ECF;&#x5EA6;&#x6216;&#x7EAC;&#x5EA6;&#x7D22;&#x5F15;&#xFF08;&#x4E00;&#x7EF4;&#x7D22;&#x5F15;&#xFF09;&#xFF0C;&#x65E0;&#x6CD5;&#x7D22;&#x5F15;&#x591A;&#x7EF4;&#x6570;&#x636E;&#xFF0C;&#x6BD4;&#x5982;&#x4E09;&#x7EF4;&#xFF08;x&#xFF0C;y&#xFF0C;z&#xFF09;</li>
+<li>&#x5F53;&#x7A7A;&#x95F4;&#x6570;&#x636E;&#x4E0D;&#x662F;&#x70B9;&#xFF0C;&#x800C;&#x662F;&#x7EBF;&#x3001;&#x9762;&#x7B49;&#xFF0C;&#x5219;&#x65E0;&#x6CD5;&#x7D22;&#x5F15;</li>
+</ul>
+<h3 id="&#x7A7A;&#x95F4;&#x7D22;&#x5F15;&#x6CD5;"><a href="#&#x7A7A;&#x95F4;&#x7D22;&#x5F15;&#x6CD5;" class="headerlink" title="&#x7A7A;&#x95F4;&#x7D22;&#x5F15;&#x6CD5;"></a>&#x7A7A;&#x95F4;&#x7D22;&#x5F15;&#x6CD5;</h3><p>&#x7A7A;&#x95F4;&#x7D22;&#x5F15;&#x53EF;&#x4EE5;&#x5206;&#x4E3A;<code>&#x57FA;&#x4E8E;hash&#x7684;&#x7A7A;&#x95F4;&#x7D22;&#x5F15;&#x65B9;&#x6CD5;</code>&#xFF0C;&#x6BD4;&#x5982;<code>geohash</code>&#xFF0C;<code>&#x7B1B;&#x5361;&#x5C14;&#x5C42;</code>&#xFF0C;&#x4EE5;&#x53CA;<code>&#x57FA;&#x4E8E;&#x6811;&#x7684;&#x7A7A;&#x95F4;&#x7D22;&#x5F15;&#x65B9;&#x6CD5;</code>&#xFF0C;&#x6BD4;&#x5982;<code>&#x56DB;&#x53C9;&#x6811;</code>&#xFF0C;<code>R&#x6811;</code>&#x7B49;&#x3002;</p>
+<h4 id="geohash"><a href="#geohash" class="headerlink" title="geohash"></a>geohash</h4><p>&#x57FA;&#x4E8E;hash&#x7684;&#x7A7A;&#x95F4;&#x7D22;&#x5F15;&#x7B97;&#x6CD5;&#x7684;&#x672C;&#x8D28;&#x662F;&#x5C06;n&#x7EF4;&#x70B9;&#x6620;&#x5C04;&#x5230;&#x4E00;&#x4E2A;&#x5355;&#x7EF4;&#x7684;&#x503C;&#x3002;geohash&#x672C;&#x8D28;&#x5373;&#x662F;&#x5982;&#x6B64;&#xFF0C;&#x7F51;&#x4E0A;&#x5F88;&#x591A;&#x6587;&#x7AE0;&#x8BB2;&#x89E3;geohash&#x7B97;&#x6CD5;&#xFF0C;&#x8FD9;&#x91CC;&#x4E0D;&#x591A;&#x505A;&#x8BF4;&#x660E;&#xFF0C;&#x7B97;&#x6CD5;&#x65E0;&#x5916;&#x4E4E;&#x51E0;&#x4E2A;&#x6B65;&#x9AA4;&#xFF1A;</p>
+<ul>
+<li>&#x8003;&#x8651;&#x7ECF;&#x5EA6;&#x533A;&#x95F4;&#xFF0C;[-180,180]&#xFF0C;&#x5F85;&#x7F16;&#x7801;&#x70B9;&#x7ECF;&#x5EA6;&#x5982;&#x679C;&#x5728;0&#x70B9;&#x53F3;&#x4FA7;&#x5219;&#x4E3A;&#x7F16;&#x7801;&#x4E3A;1&#xFF0C;&#x5DE6;&#x4FA7;&#x4E3A;0</li>
+<li>&#x82E5;&#x53F3;&#x4FA7;&#xFF0C;&#x5219;&#x8003;&#x8651;&#x533A;&#x95F4;[0,180]&#xFF0C;&#x5F85;&#x7F16;&#x7801;&#x70B9;&#x7ECF;&#x5EA6;&#x5982;&#x679C;&#x5728;90&#x70B9;&#x53F3;&#x4FA7;&#x5219;&#x4E3A;&#x7F16;&#x7801;&#x4E3A;1&#xFF0C;&#x5DE6;&#x4FA7;&#x4E3A;0</li>
+<li>&#x4E00;&#x5171;&#x8FED;&#x4EE3;&#x6267;&#x884C;n&#x6B21;&#xFF0C;&#x5219;&#x6709;n&#x4F4D;&#x4E8C;&#x8FDB;&#x5236;&#x7F16;&#x7801;&#xFF0C;&#x8BBE;&#x4E3A;X&#xFF08;&#x6BD4;&#x5982;1100110&#xFF09;</li>
+<li>&#x540C;&#x4E0A;&#x6587;&#x7B97;&#x6CD5;&#xFF0C;&#x5F97;&#x7EF4;&#x5EA6;n&#x4F4D;&#x4E8C;&#x8FDB;&#x5236;&#x7F16;&#x7801;&#xFF0C;&#x8BBE;&#x4E3A;Y&#xFF08;&#x6BD4;&#x5982;1011110&#xFF09;</li>
+<li>&#x7EC4;&#x5408;XY&#xFF0C;&#x6BD4;&#x5982;1100110 1011110&#xFF0C;&#x5728;&#x6267;&#x884C;base32&#x7F16;&#x7801;</li>
+</ul>
+<p>&#x968F;&#x7740;&#x8FED;&#x4EE3;&#x6B21;&#x6570;n&#x7684;&#x589E;&#x52A0;&#xFF0C;&#x7CBE;&#x5EA6;&#x8D8A;&#x9AD8;&#xFF0C;n=8&#x7CBE;&#x5EA6;&#x5219;&#x4E3A;18&#x7C73;&#x3002;geohash&#x6700;&#x91CD;&#x8981;&#x7684;&#x7279;&#x6027;&#x662F;&#x5728;&#x76F8;&#x540C;&#x533A;&#x57DF;&#x7684;&#x70B9;&#x7684;&#x7F16;&#x7801;&#x662F;&#x76F8;&#x540C;&#x7684;&#x3002;&#x56E0;&#x6B64;&#x6211;&#x4EEC;&#x53EF;&#x4EE5;&#x901A;&#x8FC7;<code>&#x524D;&#x7F00;&#x5339;&#x914D;</code>&#x8FDB;&#x884C;&#x641C;&#x7D22;&#xFF0C;&#x4F46;&#x662F;&#x9700;&#x8981;&#x6CE8;&#x610F;&#x7684;&#x662F;&#xFF0C;&#x4E3A;&#x4E86;&#x9632;&#x6B62;&#x8FB9;&#x754C;&#x70B9;&#x95EE;&#x9898;&#xFF0C;&#x6211;&#x4EEC;&#x9700;&#x8981;&#x641C;&#x7D22;&#x70B9;&#x5468;&#x56F4;&#x7684;8&#x4E2A;&#x533A;&#x57DF;+&#x70B9;&#x672C;&#x8EAB;&#x533A;&#x57DF;&#x3002;&#x5728;&#x641C;&#x7D22;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x6211;&#x4EEC;&#x901A;&#x8FC7;&#x7F16;&#x7801;&#x7CBE;&#x5EA6;&#x5B9A;&#x4F4D;&#x6240;&#x6709;&#x533A;&#x57DF;&#x4EE5;&#x540E;&#xFF0C;&#x5373;&#x53EF;&#x5F97;&#x5230;&#x6240;&#x6709;POI&#x70B9;&#xFF0C;&#x7136;&#x540E;&#x5728;&#x901A;&#x8FC7;&#x66B4;&#x529B;&#x6CD5;&#x7CBE;&#x786E;&#x53EC;&#x56DE;&#x5728;&#x5706;&#x5185;&#x7684;&#x6240;&#x6709;POI&#x70B9;&#x3002;</p>
+<h3 id="&#x7B1B;&#x5361;&#x5C14;&#x5C42;"><a href="#&#x7B1B;&#x5361;&#x5C14;&#x5C42;" class="headerlink" title="&#x7B1B;&#x5361;&#x5C14;&#x5C42;"></a>&#x7B1B;&#x5361;&#x5C14;&#x5C42;</h3><p>&#x7B1B;&#x5361;&#x5C14;&#x5C42;&#x65B9;&#x6CD5;&#x4E5F;&#x53EF;&#x79F0;&#x4E3A;&#x7F51;&#x683C;&#x6CD5;&#x3002;&#x6BD4;&#x5982;&#x6211;&#x4EEC;&#x5C06;&#x70B9;<x,y>&#x8FDB;&#x884C;&#x7F16;&#x7801;&#xFF1A;</x,y></p>
+<p><img src="/./geohash/1.png" alt="&#x7B1B;&#x5361;&#x5C14;&#x5C42;"></p>
+<ul>
+<li>&#x5728;&#x7B2C;&#x4E00;&#x4E2A;&#x5E73;&#x9762;&#x4E2D;&#xFF0C;&#x6211;&#x4EEC;&#x4EE5;0&#x70B9;&#x4E3A;&#x4E2D;&#x5FC3;&#x70B9;&#x5206;&#x4E3A;4^1&#x4E2A;&#x7F51;&#x683C;&#xFF0C;&#x5047;&#x8BBE;&#x70B9;<x,y>&#x5728;&#x7B2C;2&#x4E2A;&#x7F51;&#x683C;&#xFF0C;&#x90A3;&#x4E48;&#x6211;&#x4EEC;&#x8BB0;&#x5F55;&#x5143;&#x7EC4;&#xFF1A;<x,y,<1,2>&gt;</x,y,<1,2></x,y></li>
+<li>&#x540C;&#x7406;&#xFF0C;&#x5728;&#x7B2C;&#x4E8C;&#x4E2A;&#x5E73;&#x9762;&#x4E2D;&#xFF0C;&#x6211;&#x4EEC;&#x5C06;&#x5E73;&#x9762;&#x5207;&#x5206;&#x6210;4^2=16&#x4E2A;&#x7F51;&#x683C;&#xFF0C;&#x5047;&#x8BBE;&#x70B9;<x,y>&#x5728;&#x7B2C;10&#x4E2A;&#x7F51;&#x683C;&#xFF0C;&#x6211;&#x4EEC;&#x8BB0;&#x5F55;&#x5143;&#x7EC4;&#x4E3A;&#xFF1A;<x,y,<1,2>,<2,10>&gt;</2,10></x,y,<1,2></x,y></li>
+<li>&#x9012;&#x5F52;&#x6267;&#x884C;n&#x6B21;&#xFF0C;&#x5219;&#x6709;&#x5143;&#x7EC4;&#xFF1A;<x,y,<1,2>,<2,10>&#x2026;&#x2026;<n,k>&gt;&#xFF0C;&#x4E00;&#x822C;n=20&#x5373;&#x53EF;&#x6EE1;&#x8DB3;&#x4E00;&#x822C;&#x9700;&#x8981;&#x3002;</n,k></2,10></x,y,<1,2></li>
+</ul>
+<p>&#x6709;&#x4E86;&#x4E0A;&#x8FF0;&#x5143;&#x7EC4;&#xFF0C;&#x6211;&#x4EEC;&#x5373;&#x53EF;&#x5EFA;&#x7ACB;&#x5012;&#x6392;&#x7D22;&#x5F15;&#xFF08;&#x901A;&#x8FC7;&#x5E73;&#x9762;&#x7F51;&#x683C;id&#x627E;&#x5230;&#x5C5E;&#x4E8E;&#x8BE5;&#x7F51;&#x683C;&#x7684;&#x6240;&#x6709;poi&#x70B9;&#xFF09;&#x3002;&#x6B64;&#x65F6;&#x5982;&#x679C;&#x8981;&#x67E5;&#x8BE2;&#x70B9;<m,n>&#x5468;&#x56F4;1&#x516C;&#x91CC;&#x7684;&#x6240;&#x6709;POI&#xFF0C;&#x5219;&#x53EF;&#x5148;&#x901A;&#x8FC7;&#x7CBE;&#x5EA6;&#xFF08;1&#x516C;&#x91CC;&#xFF09;&#x5B9A;&#x4F4D;&#x9700;&#x8981;&#x626B;&#x63CF;&#x7684;&#x5E73;&#x9762;&#xFF0C;&#x518D;&#x5B9A;&#x4F4D;&#x5468;&#x56F4;8&#x4E2A;&#x7F51;&#x683C;+&#x672C;&#x8EAB;&#x6240;&#x5728;&#x7F51;&#x683C;&#xFF0C;&#x5C06;&#x7F51;&#x683C;&#x4E2D;&#x6240;&#x6709;poi&#x635E;&#x51FA;&#x6765;&#x4EE5;&#x540E;&#xFF0C;&#x7136;&#x540E;&#x5728;&#x901A;&#x8FC7;&#x66B4;&#x529B;&#x6CD5;&#x7CBE;&#x786E;&#x53EC;&#x56DE;&#x5728;&#x5706;&#x5185;&#x7684;&#x6240;&#x6709;POI&#x70B9;&#x3002;&#x7F51;&#x683C;&#x6CD5;&#x7684;&#x6700;&#x5927;&#x5F0A;&#x7AEF;&#x5728;&#x4E8E;&#x5F88;&#x591A;&#x7F51;&#x683C;&#x53EF;&#x80FD;&#x6BD4;&#x8F83;&#x7A00;&#x758F;&#x3002;</m,n></p>
+<h3 id="&#x56DB;&#x53C9;&#x6811;"><a href="#&#x56DB;&#x53C9;&#x6811;" class="headerlink" title="&#x56DB;&#x53C9;&#x6811;"></a>&#x56DB;&#x53C9;&#x6811;</h3><p>&#x56DB;&#x53C9;&#x6811;&#x7D22;&#x5F15;&#x5C31;&#x662F;&#x9012;&#x5F52;&#x5730;&#x5BF9;&#x5730;&#x7406;&#x7A7A;&#x95F4;&#x8FDB;&#x884C;&#x56DB;&#x5206;&#xFF0C;&#x53EF;&#x7528;&#x6765;&#x5EFA;&#x591A;&#x8FB9;&#x5F62;&#x7D22;&#x5F15;&#xFF0C;&#x6B64;&#x65F6;&#x53EA;&#x9700;&#x8981;&#x5C06;<code>&#x6700;&#x5C0F;&#x5916;&#x5305;&#x77E9;&#x5F62;&#xFF08;MBR-Minimum Bounding Rectangle&#xFF09;</code>&#x5305;&#x56F4;&#x4F4F;&#x591A;&#x8FB9;&#x5F62;&#x533A;&#x57DF;&#x3002;</p>
+<p><img src="/./geohash/2.jpg" alt="&#x56DB;&#x53C9;&#x6811;"></p>
+<p>&#x4E0A;&#x56FE;&#x56DB;&#x53C9;&#x6811;&#x6709;&#x5B58;&#x50A8;&#x5197;&#x4F59;&#xFF0C;&#x6211;&#x4EEC;&#x53EF;&#x4EE5;&#x5C06;&#x591A;&#x4E2A;&#x533A;&#x57DF;&#x5728;&#x7528;MBR&#x8FDB;&#x884C;&#x5305;&#x56F4;&#x51CF;&#x5C11;&#x8FD9;&#x79CD;&#x5197;&#x4F59;&#xFF0C;&#x53EF;&#x4EE5;&#x53C2;&#x8003;&#x5982;&#x4E0B;&#x535A;&#x5BA2;&#x63D0;&#x4F9B;&#x7684;&#x65B9;&#x6CD5;&#xFF1A;<a href="http://blog.csdn.net/zhouxuguang236/article/details/12312099" target="_blank" rel="external">http://blog.csdn.net/zhouxuguang236/article/details/12312099</a></p>
+<p>&#x9664;&#x6B64;&#x4E4B;&#x5916;&#x56DB;&#x53C9;&#x6811;&#x6709;&#x5F88;&#x591A;&#x5206;&#x7C7B;&#xFF0C;&#x6BD4;&#x5982;&#x70B9;&#x56DB;&#x53C9;&#x6811;&#x3001;PR&#x56DB;&#x53C9;&#x6811;&#x3001;MX&#x56DB;&#x53C9;&#x6811;&#x7B49;&#xFF0C;&#x53EF;&#x53C2;&#x8003;&#x8FD9;&#x7BC7;&#x6587;&#x7AE0;&#xFF1A;<a href="http://malagis.com/gis-quad-tree-indexes-classification.html" target="_blank" rel="external">http://malagis.com/gis-quad-tree-indexes-classification.html</a></p>
+<p>&#x6211;&#x4EEC;&#x5229;&#x7528;&#x70B9;&#x56DB;&#x53C9;&#x6811;&#x5373;&#x53EF;&#x5C06;&#x6240;&#x6709;POI&#x70B9;&#x8FDB;&#x884C;&#x7D22;&#x5F15;&#xFF0C;&#x5982;&#x4E0B;&#x662F;&#x6211;&#x7B80;&#x5355;&#x5B9E;&#x73B0;&#x7684;&#x4E00;&#x9897;&#x70B9;&#x56DB;&#x53C9;&#x6811;&#x6E90;&#x7801;&#xFF08;&#x975E;&#x5E73;&#x8861;&#xFF09;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">QuadTree</span> </span>{</div><div class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">float</span> MAX_L2M = <span class="number">55000.0f</span>;</div><div class="line"></div><div class="line">    <span class="keyword">private</span> Node root;</div><div class="line"></div><div class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">Node</span> </span>{</div><div class="line"></div><div class="line">        <span class="keyword">public</span> <span class="keyword">double</span> x, y;              <span class="comment">// x- and y- coordinates</span></div><div class="line">        Node NW, NE, SE, SW;            <span class="comment">// four subtrees</span></div><div class="line">        <span class="keyword">public</span> <span class="keyword">int</span> id;                <span class="comment">// associated data</span></div><div class="line">        <span class="keyword">public</span> String seq; </div><div class="line"></div><div class="line">        Node(<span class="keyword">double</span> x, <span class="keyword">double</span> y, <span class="keyword">int</span> id, String seq) {</div><div class="line">            <span class="keyword">this</span>.x = x;</div><div class="line">            <span class="keyword">this</span>.y = y;</div><div class="line">            <span class="keyword">this</span>.id = id;</div><div class="line">            <span class="keyword">this</span>.seq = seq;</div><div class="line">        }</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">Box</span> </span>{</div><div class="line"></div><div class="line">        <span class="keyword">double</span> xlow, ylow, xhigh, yhigh;</div><div class="line"></div><div class="line">        <span class="function"><span class="keyword">public</span> <span class="title">Box</span><span class="params">(<span class="keyword">double</span> xlow, <span class="keyword">double</span> ylow, <span class="keyword">double</span> xhigh, <span class="keyword">double</span> yhigh)</span> </span>{</div><div class="line">            <span class="keyword">this</span>.xlow = xlow;</div><div class="line">            <span class="keyword">this</span>.xhigh = xhigh;</div><div class="line">            <span class="keyword">this</span>.ylow = ylow;</div><div class="line">            <span class="keyword">this</span>.yhigh = yhigh;</div><div class="line">        }</div><div class="line"></div><div class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">contains</span><span class="params">(<span class="keyword">double</span> x, <span class="keyword">double</span> y)</span> </span>{</div><div class="line">            <span class="keyword">return</span> (x &gt;= xlow &amp;&amp; y &gt;= ylow &amp;&amp; x &lt;= xhigh &amp;&amp; y &lt;= yhigh);</div><div class="line">        }</div><div class="line"></div><div class="line">        <span class="meta">@Override</span></div><div class="line">        <span class="function"><span class="keyword">public</span> String <span class="title">toString</span><span class="params">()</span> </span>{</div><div class="line">            <span class="keyword">return</span> <span class="string">&quot;( &quot;</span> + xlow + <span class="string">&quot;, &quot;</span> + ylow + <span class="string">&quot;, &quot;</span> + xhigh + <span class="string">&quot;, &quot;</span> + yhigh + <span class="string">&quot; )&quot;</span>;</div><div class="line">        }</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">insert</span><span class="params">(<span class="keyword">double</span> x, <span class="keyword">double</span> y, <span class="keyword">int</span> id, String seq)</span> </span>{</div><div class="line">        root = insert(root, x, y, id, seq);</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">private</span> Node <span class="title">insert</span><span class="params">(Node h, <span class="keyword">double</span> x, <span class="keyword">double</span> y, <span class="keyword">int</span> id, String seq)</span> </span>{</div><div class="line">        <span class="keyword">if</span> (h == <span class="keyword">null</span>)</div><div class="line">            <span class="keyword">return</span> <span class="keyword">new</span> Node(x, y, id, seq);</div><div class="line"></div><div class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (x &lt; h.x &amp;&amp; y &lt; h.y)</div><div class="line">            h.SW = insert(h.SW, x, y, id, seq);</div><div class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (x &lt; h.x &amp;&amp; !(y &lt; h.y))</div><div class="line">            h.NW = insert(h.NW, x, y, id, seq);</div><div class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (!(x &lt; h.x) &amp;&amp; y &lt; h.y)</div><div class="line">            h.SE = insert(h.SE, x, y, id, seq);</div><div class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (!(x &lt; h.x) &amp;&amp; !(y &lt; h.y))</div><div class="line">            h.NE = insert(h.NE, x, y, id, seq);</div><div class="line">        <span class="keyword">return</span> h;</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">public</span> List&lt;Node&gt; <span class="title">query</span><span class="params">(Box box)</span> </span>{</div><div class="line">        List&lt;Node&gt; result = <span class="keyword">new</span> ArrayList&lt;Node&gt;();</div><div class="line">        query(root, box, result);</div><div class="line">        <span class="keyword">return</span> result;</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">query</span><span class="params">(Node h, Box box, List&lt;Node&gt; result)</span> </span>{</div><div class="line">        <span class="keyword">if</span> (h == <span class="keyword">null</span>)</div><div class="line">            <span class="keyword">return</span>;</div><div class="line"></div><div class="line">        <span class="keyword">if</span> (box.contains(h.x, h.y))</div><div class="line">            result.add(h);</div><div class="line"></div><div class="line">        <span class="keyword">if</span> ( (box.xlow &lt; h.x) &amp;&amp;  (box.ylow &lt; h.y))</div><div class="line">            query(h.SW, box, result);</div><div class="line">        <span class="keyword">if</span> ( (box.xlow &lt; h.x) &amp;&amp; !(box.yhigh &lt; h.y))</div><div class="line">            query(h.NW, box, result);</div><div class="line">        <span class="keyword">if</span> (!(box.xhigh &lt; h.x) &amp;&amp;  (box.ylow &lt; h.y))</div><div class="line">            query(h.SE, box, result);</div><div class="line">        <span class="keyword">if</span> (!(box.xhigh &lt; h.x) &amp;&amp; !(box.yhigh &lt; h.y))</div><div class="line">            query(h.NE, box, result);</div><div class="line">    }</div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Box <span class="title">makeBox</span><span class="params">(<span class="keyword">double</span> lat, <span class="keyword">double</span> lng, <span class="keyword">int</span> distance)</span> </span>{</div><div class="line">        <span class="keyword">double</span> r = distance / MAX_L2M;</div><div class="line">        <span class="keyword">return</span> <span class="keyword">new</span> Box(lat - r, lng - r, lat + r, lng + r);</div><div class="line">    }</div><div class="line">}</div></pre></td></tr></table></figure>
+<h3 id="r&#x6811;"><a href="#R&#x6811;" class="headerlink" title="R&#x6811;"></a>R&#x6811;</h3><p>R&#x6811;&#x7684;&#x201C;R&#x201D;&#x4EE3;&#x8868;&#x201C;Rectangle&#xFF08;&#x77E9;&#x5F62;&#xFF09;&#x201D;&#xFF0C;&#x4EE5;&#x4E0B;&#x6458;&#x81EA;&#x767E;&#x79D1;&#x7684;&#x4E00;&#x6BB5;&#x8BDD;&#x57FA;&#x672C;&#x53EF;&#x4EE5;&#x63CF;&#x8FF0;R&#x6811;&#x7684;&#x4E00;&#x4E9B;&#x57FA;&#x672C;&#x5185;&#x5BB9;&#xFF1A;</p>
+<blockquote>
+<p>R&#x6811;&#x662F;GUTTMAN&#x4E8E;1984&#x5E74;&#x63D0;&#x51FA;&#x7684;&#x6700;&#x65E9;&#x652F;&#x6301;&#x6709;&#x5E8F;&#x6269;&#x5C55;&#x7684;&#x5BF9;&#x8C61;&#x5B58;&#x53D6;&#x65B9;&#x6CD5;&#x4E4B;&#x4E00;&#xFF0C;&#x4E5F;&#x662F;&#x76EE;&#x524D;&#x5E94;&#x7528;&#x6700;&#x4E3A;&#x5E7F;&#x6CDB;&#x7684;&#x4E00;&#x79CD;&#x7A7A;&#x95F4;&#x7D22;&#x5F15;&#x7ED3;&#x6784;&#x3002;&#x8BB8;&#x591A;&#x5546;&#x7528;&#x7A7A;&#x95F4;&#x6570;&#x636E;&#x5E93;&#x7CFB;&#x7EDF;&#xFF0C;&#x5982;MapInfo SpatialWaro&#x548C;Oracle Spatial&#x7B49;&#x5747;&#x63D0;&#x4F9B;&#x5BF9;R&#x6811;&#x7684;&#x652F;&#x6301;&#xFF0C;&#x5F00;&#x653E;&#x6E90;&#x7801;&#x7CFB;&#x7EDF;PostgreSQL&#x4E5F;&#x5B9E;&#x73B0;&#x4E86;R&#x6811;&#x3002;&#x8FD1;&#x4E8C;&#x5341;&#x591A;&#x5E74;&#x6765;&#xFF0C;&#x8BB8;&#x591A;&#x5B66;&#x8005;&#x81F4;&#x529B;&#x4E8E;R&#x6811;&#x7684;&#x7814;&#x7A76;&#xFF0C;&#x5728;R&#x6811;&#x7684;&#x57FA;&#x7840;&#x4E0A;&#x884D;&#x751F;&#x51FA;&#x4E86;&#x8BB8;&#x591A;&#x53D8;&#x79CD;&#x3002;&#x6BD4;&#x8F83;&#x5178;&#x578B;&#x7684;&#x6709;R+&#x6811;&#x3001;R*&#x6811;&#x3001;&#x538B;&#x7F29;R&#x6811;&#x7B49;&#x3002;</p>
+</blockquote>
+<p>R&#x6811;&#x7684;&#x6838;&#x5FC3;&#x601D;&#x60F3;&#x662F;&#x805A;&#x5408;&#x8DDD;&#x79BB;&#x76F8;&#x8FD1;&#x7684;POI&#x8282;&#x70B9;&#xFF0C;&#x7136;&#x540E;&#x5728;&#x6811;&#x7ED3;&#x6784;&#x7684;&#x4E0A;&#x4E00;&#x5C42;&#x5C06;&#x5176;&#x8868;&#x793A;&#x4E3A;&#x8FD9;&#x4E9B;&#x8282;&#x70B9;&#x7684;MBR&#xFF0C;&#x8FD9;&#x4E2A;MBR&#x5C31;&#x6210;&#x4E3A;&#x4E0A;&#x4E00;&#x5C42;&#x7684;&#x4E00;&#x4E2A;&#x7EC4;&#x5408;&#x8282;&#x70B9;&#x3002;&#x56E0;&#x4E3A;&#x6240;&#x6709;&#x8282;&#x70B9;&#x90FD;&#x5728;&#x5B83;&#x4EEC;&#x7684;&#x6700;&#x5C0F;&#x5916;&#x63A5;&#x77E9;&#x5F62;&#x4E2D;&#xFF0C;&#x6240;&#x4EE5;&#x8DDF;&#x67D0;&#x4E2A;&#x77E9;&#x5F62;&#x4E0D;&#x76F8;&#x4EA4;&#x7684;&#x67E5;&#x8BE2;&#x5C31;&#x4E00;&#x5B9A;&#x8DDF;&#x8FD9;&#x4E2A;&#x77E9;&#x5F62;&#x4E2D;&#x7684;&#x6240;&#x6709;&#x8282;&#x70B9;&#x90FD;&#x4E0D;&#x76F8;&#x4EA4;&#x3002;&#x4E4B;&#x540E;&#x518D;&#x5C06;MBR&#x5728;&#x7EC4;&#x5408;&#x6210;&#x66F4;&#x5927;&#x7684;MBR&#x3002;&#x8FD9;&#x6837;&#x9012;&#x5F52;&#x7684;&#x6267;&#x884C;&#xFF0C;&#x5C31;&#x53EF;&#x4EE5;&#x5F97;&#x5230;&#x4E00;&#x9897;R&#x6811;&#x4E86;&#x3002;&#x5982;&#x4E0B;&#x56FE;&#xFF1A;</p>
+<p><img src="/./geohash/3.png" alt="R&#x6811;"></p>
+<p>&#x641C;&#x7D22;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x6211;&#x4EEC;&#x4E5F;&#x662F;&#x4F7F;&#x7528;&#x4E00;&#x4E2A;&#x5916;&#x63A5;&#x6B63;&#x65B9;&#x5F62;&#x4F5C;&#x4E3A;&#x8FC7;&#x6EE4;&#x6761;&#x4EF6;&#xFF0C;R&#x6811;&#x7684;&#x7ED3;&#x6784;&#x80FD;&#x591F;&#x5FEB;&#x901F;&#x7684;&#x627E;&#x5230;&#x5728;&#x5176;&#x5185;&#x90E8;&#x6216;&#x4E0E;&#x5176;&#x76F8;&#x4EA4;&#x7684;MBR&#x53F6;&#x5B50;&#x8282;&#x70B9;&#xFF0C;&#x7136;&#x540E;&#x5C06;&#x53F6;&#x5B50;&#x8282;&#x70B9;&#x4E2D;POI&#x70B9;&#x4E0E;&#x4E2D;&#x5FC3;&#x8282;&#x70B9;&#x901A;&#x8FC7;&#x66B4;&#x529B;&#x6CD5;&#x8BA1;&#x7B97;&#xFF0C;&#x5373;&#x53EF;&#x53EC;&#x56DE;&#x6EE1;&#x8DB3;&#x8981;&#x6C42;&#x7684;&#x6240;&#x6709;POI&#x70B9;&#x3002;</p>
+<h2 id="&#x540E;&#x8BB0;"><a href="#&#x540E;&#x8BB0;" class="headerlink" title="&#x540E;&#x8BB0;"></a>&#x540E;&#x8BB0;</h2><p>&#x4E4B;&#x524D;&#x5728;qunar.com&#x505A;&#x9152;&#x5E97;&#x76F8;&#x5173;&#x7684;&#x641C;&#x7D22;&#x5DE5;&#x4F5C;&#xFF0C;&#x6211;&#x4EEC;&#x5173;&#x4E8E;poi&#x70B9;&#x8BA1;&#x7B97;&#x7684;&#x5904;&#x7406;&#x6BD4;&#x8F83;&#x7B80;&#x5355;&#xFF0C;&#x5C31;&#x662F;&#x5C06;&#x6240;&#x6709;POI&#x70B9;&#x52A0;&#x8F7D;&#x5230;&#x5185;&#x5B58;&#xFF0C;&#x7136;&#x540E;&#x5728;&#x5185;&#x5B58;&#x4E2D;&#x5EFA;&#x7ACB;&#x4E00;&#x9897;&#x56DB;&#x53C9;&#x6811;&#x3002;&#x901A;&#x8FC7;&#x56DB;&#x53C9;&#x6811;&#x7D22;&#x5F15;&#x6765;&#x8FDB;&#x884C;POI&#x7684;&#x53EC;&#x56DE;&#x3002;&#x53EA;&#x6240;&#x4EE5;&#x53EF;&#x4EE5;&#x8FD9;&#x4E48;&#x505A;&#xFF0C;&#x4E5F;&#x662F;&#x56E0;&#x4E3A;&#x6211;&#x4EEC;&#x7684;POI&#x70B9;&#x89C4;&#x6A21;&#x76F8;&#x5BF9;&#x6BD4;&#x8F83;&#x5C0F;&#xFF0C;&#x867D;&#x7136;&#x603B;&#x91CF;&#x5F88;&#x5927;&#xFF0C;&#x4F46;&#x901A;&#x8FC7;&#x57CE;&#x5E02;&#x7EF4;&#x5EA6;hash&#x540E;&#xFF0C;&#x6BCF;&#x4E2A;&#x57CE;&#x5E02;&#x6240;&#x5177;&#x6709;&#x7684;POI&#x89C4;&#x6A21;&#x5C31;&#x5F88;&#x5C0F;&#x4E86;&#x3002;&#x8FD9;&#x4E5F;&#x6B63;&#x662F;&#x56E0;&#x4E3A;&#x5927;&#x90E8;&#x5206;&#x7684;o2o&#x5E94;&#x7528;&#xFF0C;&#x7528;&#x6237;&#x641C;&#x7D22;&#x603B;&#x662F;&#x8981;&#x5148;&#x5B9A;&#x4F4D;&#x4E00;&#x4E2A;&#x5177;&#x4F53;&#x7684;&#x57CE;&#x5E02;&#x3002;</p>
+<h2 id="&#x53C2;&#x8003;&#x8D44;&#x6599;"><a href="#&#x53C2;&#x8003;&#x8D44;&#x6599;" class="headerlink" title="&#x53C2;&#x8003;&#x8D44;&#x6599;"></a>&#x53C2;&#x8003;&#x8D44;&#x6599;</h2><ul>
+<li><a href="http://tech.meituan.com/lucene-distance.html" target="_blank" rel="external">http://tech.meituan.com/lucene-distance.html</a></li>
+<li><a href="https://www.atatech.org/articles/71502" target="_blank" rel="external">https://www.atatech.org/articles/71502</a></li>
+<li><a href="http://tech.meituan.com/solr-spatial-search.html" target="_blank" rel="external">http://tech.meituan.com/solr-spatial-search.html</a></li>
+<li><a href="http://www.cnblogs.com/LBSer/category/575692.html" target="_blank" rel="external">http://www.cnblogs.com/LBSer/category/575692.html</a></li>
+<li><a href="http://blog.csdn.net/zhouxuguang236/article/details/7898272" target="_blank" rel="external">http://blog.csdn.net/zhouxuguang236/article/details/7898272</a></li>
+<li><a href="https://zh.wikipedia.org/wiki/R%E6%A0%91" target="_blank" rel="external">https://zh.wikipedia.org/wiki/R%E6%A0%91</a></li>
+<li><a href="http://blog.csdn.net/v_JULY_v/article/details/6530142/" target="_blank" rel="external">http://blog.csdn.net/v_JULY_v/article/details/6530142/</a></li>
+</ul>
+
+                
+  <!-- css -->
+  <style type="text/css">
+      .center {
+          text-align: center;
+      }
+      .hidden {
+          display: none;
+      }
+    .donate_bar a.btn_donate{
+      display: inline-block;
+      width: 82px;
+      height: 82px;
+      background: url("http://7xsl28.com1.z0.glb.clouddn.com/btn_reward.gif") no-repeat;
+      _background: url("http://7xsl28.com1.z0.glb.clouddn.com/btn_reward.gif") no-repeat;
+
+      <!-- http://img.t.sinajs.cn/t5/style/images/apps_PRF/e_media/btn_reward.gif
+           因为本 hexo 生成的博客所用的 theme 的 a:hover 带动画效果，
+         为了在让打赏按钮显示效果正常 而 添加了以下几行 css，
+         嵌入其它博客时不一定要它们。 -->
+      -webkit-transition: background 0s;
+      -moz-transition: background 0s;
+      -o-transition: background 0s;
+      -ms-transition: background 0s;
+      transition: background 0s;
+      <!-- /让打赏按钮的效果显示正常 而 添加的几行 css 到此结束 -->
+    }
+
+    .donate_bar a.btn_donate:hover{ background-position: 0px -82px;}
+    .donate_bar .donate_txt {
+      display: block;
+      color: #9d9d9d;
+      font: 14px/2 "Microsoft Yahei";
+    }
+    .bold{ font-weight: bold; }
+  </style>
+  <!-- /css -->
+
+    <!-- Donate Module -->
+  <div id="donate_module">
+
+  <!-- btn_donate & tips -->
+  <div id="donate_board" class="donate_bar center">
+      <br>
+      ------------------------------------------------------------------------------------------------------------------------------
+      <br>
+    <a id="btn_donate" class="btn_donate" target="_self" href="javascript:;" title="Donate 打赏"></a>
+    <span class="donate_txt">
+      Enjoy it ? Donate me !  欣赏此文？求鼓励，求支持！
+    </span>
+
+
+  </div>
+  <!-- /btn_donate & tips -->
+
+  <!-- donate guide -->
+
+  <div id="donate_guide" class="donate_bar center hidden">
+        <br>
+        <br>
+
+    <a href="/img/wechat_pay.jpg" title="用微信扫一扫哦~" class="fancybox" rel="article0">
+      <img src="/img/wechat_pay.jpg" title="微信打赏 Colin" height="190px" width="auto"/>
+    </a>
+
+        &nbsp;&nbsp;
+
+    <!-- <a href="undefined" title="用支付宝扫一扫即可~" class="fancybox" rel="article0">
+      <img src="undefined" title="支付宝打赏 Colin" height="190px" width="auto"/>
+    </a> -->
+
+    <span class="donate_txt">
+      Enjoy it ? Donate me !  欣赏此文？求鼓励，求支持！
+    </span>
+
+  </div>
+  <!-- /donate guide -->
+
+  <!-- donate script -->
+  <script type="text/javascript">
+    document.getElementById('btn_donate').onclick = function() {
+      $('#donate_board').addClass('hidden');
+      $('#donate_guide').removeClass('hidden');
+    }
+
+    function donate_on_web(){
+      $('#donate').submit();
+        }
+
+    var original_window_onload = window.onload;
+        window.onload = function () {
+            if (original_window_onload) {
+                original_window_onload();
+            }
+            document.getElementById('donate_board_wdg').className = 'hidden';
+    }
+  </script>
+  <!-- /donate script -->
+</div>
+<!-- /Donate Module -->
+   
+
+ </br>
+ </br>
+
+             
+                <ul class="pager">
+                    
+                    
+                        <li class="next">
+                            <a href="/scan-tables/" data-toggle="tooltip" data-placement="top" title="关于扫表的一点思考">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#空间索引" title="空间索引">空间索引</a>
+                        
+                          <a class="tag" href="/tags/#geohash" title="geohash">geohash</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="http://youdang.github.io" target="_blank">youdang&#39;s Blog</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("http://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'always',
+          placement: 'right',
+          icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/TooBusyTooLazy">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/zhang-yan-32-14">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/kriszhang123">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/zhangyan985">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/kris-zhang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/岩-张-83aa7a121">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Kris&#39; Blog 2017 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("kriszhang.com/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("http://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+<script>
+    // dynamic User by Hux
+    var _gaId = 'UA-49627206-1';
+    var _gaDomain = 'huangxuan.me';
+
+    // Originial
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+
+<!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4cc1f2d8f3067386cc5cdb626a202900';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "//hm.baidu.com/hm.js?" + _baId;
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="kriszhang.com/undefined" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work --><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+
+</body>
+
+</html>
