@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="两只bug鸣翠柳，一行代码上西天">
+    <meta name="keyword"  content="算法 大数据 系统架构 机器学习 Java技术 中间件 高并发">
+    <link rel="shortcut icon" href="/img/favicon.ico">
+    <meta name="baidu-site-verification" content="I9urFMjvnH" />
+<meta name="google-site-verification" content="kOhH4Y18J0KFSbfkCwJhRGpHFvY1aoSeyVci6XDCxAs" />
+    <title>
+        
+          我的异常跑哪儿去了？ - Kris的博客 | Kris&#39; Blog
+        
+    </title>
+
+    <link rel="canonical" href="kriszhang.com/uncaught-exception/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="/css/syntax.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="http://cdn.staticfile.org/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id='wx_pic' style='margin:0 auto;display:none;'>
+    <img src='undefined' />
+  </div>
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Kris&#39; Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    
+<!-- Image to hack wechat -->
+<!-- <img src="kriszhang.com/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="{{ site.baseurl }}/{% if page.header-img %}{{ page.header-img }}{% else %}{{ site.header-img }}{% endif %}" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('head.jpg')
+    }
+</style>
+<header class="intro-header" >
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                          <a class="tag" href="/tags/#问题排查" title="问题排查">问题排查</a>
+                        
+                    </div>
+                    <h1>我的异常跑哪儿去了？</h1>
+                    <h2 class="subheading"></h2>
+                    <span class="meta">
+                        Posted by kris.zhang on
+                        2017-07-15
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "//hm.baidu.com/hm.js?e06e6395b235a8f00dd89c228abbb3f1";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+    </script>
+</header>
+
+<!-- Post Content -->
+<article>
+  <div id='wx_pic' style='margin:0 auto;display:none;'>
+    <img src='undefined' />
+  </div>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <blockquote>
+<p>&#x5DE5;&#x7A0B;&#x5E08;&#x4E0D;&#x6015;&#x51FA;&#x9519;&#xFF0C;&#x5C31;&#x6015;&#x4E0D;&#x77E5;&#x9053;&#x54EA;&#x91CC;&#x51FA;&#x9519;&#x3002;</p>
+</blockquote>
+<p>&#x6700;&#x8FD1;&#x5728;&#x505A;&#x4E00;&#x4E2A;&#x9879;&#x76EE;&#xFF0C;&#x6D4B;&#x8BD5;&#x73AF;&#x5883;&#x4E0B;&#x90FD;&#x597D;&#x597D;&#x7684;&#xFF0C;&#x4F46;&#x5728;&#x9884;&#x53D1;&#x73AF;&#x5883;&#x4E0B;&#xFF0C;<strong>&#x7406;&#x6240;&#x5F53;&#x7136;</strong>&#x5E94;&#x8BE5;&#x8F93;&#x51FA;&#x7684;&#x65E5;&#x5FD7;&#x5E76;&#x6CA1;&#x6709;&#x8F93;&#x51FA;&#x3002;&#x66F4;&#x91CD;&#x8981;&#x7684;&#x662F;&#xFF0C;&#x7ADF;&#x7136;&#x8FDE;&#x7279;&#x4E48;&#x4EFB;&#x4F55;&#x9519;&#x8BEF;&#x5F02;&#x5E38;&#x90FD;&#x6CA1;&#x6709;&#x53D1;&#x73B0;&#xFF01;&#xFF01;&#x672C;&#x7BC7;&#x6587;&#x7AE0;&#x5E26;&#x60A8;&#x770B;&#x4E00;&#x770B;&#x8FD9;&#x4E2A;&#x5173;&#x4E8E;&#x7EBF;&#x7A0B;&#x5F02;&#x5E38;&#x6355;&#x83B7;&#x7684;&#x5751;&#x3002;</p>
+<h2 id="&#x5751;&#x7239;&#x7684;&#x4EE3;&#x7801;"><a href="#&#x5751;&#x7239;&#x7684;&#x4EE3;&#x7801;" class="headerlink" title="&#x5751;&#x7239;&#x7684;&#x4EE3;&#x7801;"></a>&#x5751;&#x7239;&#x7684;&#x4EE3;&#x7801;</h2><figure class="highlight java"><table><tr><td class="code"><pre><div class="line"></div><div class="line"><span class="comment">/** &#x5BF9;&#x7EBF;&#x7A0B;&#x629B;&#x51FA;&#x7684;&#x5F02;&#x5E38;&#x7EDF;&#x4E00;&#x5904;&#x7406; &#x8FD9;&#x91CC;&#x53EA;&#x8BB0;&#x4E00;&#x4E2A;&#x9519;&#x8BEF;&#x65E5;&#x5FD7; */</span></div><div class="line">UncaughtExceptionHandler UEH = (t, e) -&gt; log.error(e);</div><div class="line"></div><div class="line"><span class="comment">/** &#x521B;&#x5EFA;&#x4E00;&#x4E2A;&#x7EBF;&#x7A0B;&#x6C60; */</span></div><div class="line">ThreadPoolExecutor pool =</div><div class="line">    <span class="keyword">new</span> ThreadPoolExecutor(<span class="number">10</span>,<span class="number">80</span>,<span class="number">30</span>, MINUTES,</div><div class="line">        <span class="keyword">new</span> LinkedBlockingQueue&lt;&gt;(<span class="number">5000</span>),</div><div class="line">        <span class="keyword">new</span> ThreadFactoryBuilder()</div><div class="line">            .setNameFormat(<span class="string">&quot;...&quot;</span>)</div><div class="line">            .setDaemon(<span class="keyword">false</span>)</div><div class="line">            .setUncaughtExceptionHandler(UEH)</div><div class="line">            .build(),</div><div class="line">        <span class="keyword">new</span> CallerRunsPolicy());</div><div class="line">        </div><div class="line"><span class="comment">/** &#x5165;&#x53E3;&#x51FD;&#x6570; */</span></div><div class="line"><span class="function"><span class="keyword">void</span> <span class="title">method</span><span class="params">()</span> </span>{</div><div class="line">        pool.submit((Callable&lt;Void&gt;) () -&gt; {</div><div class="line">        log.info(...);<span class="comment">//&#x2460;</span></div><div class="line">        <span class="keyword">if</span> (check()) {</div><div class="line">            log.info(...);<span class="comment">//&#x2461;</span></div><div class="line">            fun1();</div><div class="line">        } <span class="keyword">else</span> {</div><div class="line">            log.info(...);<span class="comment">//&#x2462;</span></div><div class="line">            fun2();</div><div class="line">        }</div><div class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</div><div class="line">    });</div><div class="line">}</div></pre></td></tr></table></figure>
+<p>&#x4EE5;&#x4E0A;&#x662F;<code>&#x672C;&#x5751;</code>&#x7684;&#x7B80;&#x5316;&#x4EE3;&#x7801;&#xFF0C;&#x5F88;&#x7B80;&#x5355;&#xFF1A;&#x5148;&#x521B;&#x5EFA;&#x4E00;&#x4E2A;&#x7EBF;&#x7A0B;&#x6C60;<code>pool</code>&#xFF0C;&#x7136;&#x540E;&#x7528;&#x5B83;&#x6267;&#x884C;&#x4E00;&#x4E2A;&#x4EFB;&#x52A1;&#xFF0C;&#x6B64;&#x4EFB;&#x52A1;&#x903B;&#x8F91;&#x662F;<code>check()</code>&#x4E00;&#x4E0B;&#xFF0C;&#x901A;&#x8FC7;&#x5219;&#x8C03;&#x7528;<code>fun1()</code>&#xFF0C;&#x4E0D;&#x901A;&#x8FC7;&#x5219;&#x8C03;&#x7528;<code>fun2()</code>&#x3002;</p>
+<p>&#x5728;&#x6D4B;&#x8BD5;&#x73AF;&#x5883;&#x4E0B;&#xFF0C;&#x2460;&#x548C;&#x2461;&#x6216;&#x2462;&#x7684;&#x65E5;&#x5FD7;&#x5747;&#x6709;&#x8F93;&#x51FA;&#xFF0C;&#x4E00;&#x5207;&#x6B63;&#x5E38;&#x7B26;&#x5408;&#x9884;&#x671F;&#xFF1B;&#x4F46;&#x4E0A;&#x4E86;&#x9884;&#x53D1;&#x4E4B;&#x540E;&#x6211;&#x4EEC;&#x53D1;&#x73B0;&#xFF0C;&#x2460;&#x65E5;&#x5FD7;&#x6709;&#x8F93;&#x51FA;&#xFF0C;&#x2461;&#x548C;&#x2462;&#x5747;&#x6CA1;&#x6709;&#x8F93;&#x51FA;&#x3002;&#x540C;&#x65F6;&#xFF0C;&#x6240;&#x6709;&#x65E5;&#x5FD7;&#x91CC;&#x5747;&#x65E0;&#x4EFB;&#x4F55;&#x5F02;&#x5E38;&#x8BB0;&#x5F55;&#xFF01;&#x8FD9;&#x5C31;&#x61F5;&#x903C;&#x4E86;&#xFF0C;&#x5982;&#x679C;<strong>&#x51FA;&#x73B0;&#x5F02;&#x5E38;</strong>&#xFF0C;&#x6211;&#x7684;<code>UncaughtExceptionHandler</code>&#x4F1A;&#x6253;&#x5370;&#x9519;&#x8BEF;&#x65E5;&#x5FD7;&#x554A;&#xFF1F;&#x5982;&#x679C;<strong>&#x6CA1;&#x6709;&#x5F02;&#x5E38;</strong>&#xFF0C;&#x4E3A;&#x4EC0;&#x4E48;&#x2461;&#x548C;&#x2462;&#x5747;&#x65E0;&#x65E5;&#x5FD7;&#x8F93;&#x51FA;&#xFF1F;&#x8FD9;&#x600E;&#x4E48;&#x770B;&#x90FD;&#x5F88;&#x8BE1;&#x5F02;&#x3002;</p>
+<p>Wait a minute&#xFF0C;&#x4E0D;&#x77E5;&#x9053;UncaughtExceptionHandler&#x662F;&#x4EC0;&#x4E48;&#xFF1F;&#x6211;&#x4EEC;&#x5148;&#x82B1;1&#x5206;&#x949F;&#x770B;&#x4E00;&#x4E0B;&#x3002;</p>
+<h2 id="uncaughtexceptionhandler"><a href="#UncaughtExceptionHandler" class="headerlink" title="UncaughtExceptionHandler"></a>UncaughtExceptionHandler</h2><p>&#x7EBF;&#x7A0B;&#x6709;&#x5F88;&#x591A;&#x5E38;&#x7528;&#x7684;&#x8BBE;&#x7F6E;&#x9009;&#x9879;&#xFF0C;&#x6BD4;&#x5982;&#xFF1A;&#x7EBF;&#x7A0B;&#x540D;&#x5B57;&#xFF0C;&#x7EBF;&#x7A0B;&#x4F18;&#x5148;&#x7EA7;&#xFF0C;&#x662F;&#x5426;&#x662F;&#x5B88;&#x62A4;&#x7EBF;&#x7A0B;(daemon)&#xFF0C;&#x4EE5;&#x53CA;<code>UncaughtExceptionHandler</code>&#x3002;&#x4ED6;&#x7684;&#x4F5C;&#x7528;&#x5728;&#x4E8E;&#x6355;&#x83B7;&#x7EBF;&#x7A0B;&#x4E2D;&#x6CA1;&#x6709;&#x6355;&#x83B7;&#x7684;&#x5F02;&#x5E38;&#xFF0C;&#x6BD4;&#x5982;&#x4EE3;&#x7801;&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>{</div><div class="line">    Thread t = <span class="keyword">new</span> Thread(() -&gt; {</div><div class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> RuntimeException();</div><div class="line">    });</div><div class="line">    t.setUncaughtExceptionHandler((t, e) -&gt; e.printStackTrace());</div><div class="line">    t.start();</div><div class="line">}</div></pre></td></tr></table></figure>
+<p>&#x4E0A;&#x8FF0;&#x4EE3;&#x7801;&#x5728;&#x7EBF;&#x7A0B;&#x4E2D;&#x629B;&#x51FA;&#x4E86;&#x4E00;&#x4E2A;&#x8FD0;&#x884C;&#x65F6;&#x5F02;&#x5E38;&#xFF0C;&#x4E4B;&#x540E;&#xFF0C;&#x7531;&#x6211;&#x4EEC;&#x8BBE;&#x7F6E;&#x7684;UncaughtExceptionHandler&#x5BF9;&#x8C61;&#x8FDB;&#x884C;&#x5F02;&#x5E38;&#x7684;&#x5904;&#x7406;&#xFF0C;&#x8FD9;&#x91CC;&#x6253;&#x5370;&#x4E00;&#x4E0B;&#x5F02;&#x5E38;&#x5806;&#x6808;&#x3002;UncaughtExceptionHandler&#x5B58;&#x5728;&#x7684;&#x610F;&#x4E49;&#x5728;&#x4E8E;&#xFF1A;</p>
+<ul>
+<li>&#x505A;&#x5F02;&#x5E38;&#x515C;&#x5E95;</li>
+<li>&#x7EDF;&#x4E00;&#x7EBF;&#x7A0B;&#x7684;&#x5F02;&#x5E38;&#x5904;&#x7406;</li>
+</ul>
+<h2 id="&#x7B54;&#x6848;&#x63ED;&#x6653;"><a href="#&#x7B54;&#x6848;&#x63ED;&#x6653;" class="headerlink" title="&#x7B54;&#x6848;&#x63ED;&#x6653;"></a>&#x7B54;&#x6848;&#x63ED;&#x6653;</h2><p>&#x7406;&#x89E3;&#x4E86;UncaughtExceptionHandler&#x4E4B;&#x540E;&#xFF0C;&#x518D;&#x6765;&#x770B;&#x4E0A;&#x9762;&#x90A3;&#x4E2A;&#x6709;&#x5751;&#x7684;&#x4EE3;&#x7801;&#x5C31;&#x4F1A;&#x8D8A;&#x770B;&#x8D8A;&#x8BE1;&#x5F02;&#xFF0C;&#x4E00;&#x5207;&#x4F3C;&#x4E4E;&#x90FD;&#x7406;&#x6240;&#x5F53;&#x7136;&#xFF01;&#x5982;&#x679C;&#x6709;&#x5F02;&#x5E38;&#xFF0C;&#x90A3;&#x6211;&#x5E94;&#x8BE5;&#x8F93;&#x51FA;&#x5F02;&#x5E38;&#x65E5;&#x5FD7;&#xFF0C;&#x5982;&#x679C;&#x6CA1;&#x6709;&#x5F02;&#x5E38;&#x90A3;&#x4E5F;&#x5E94;&#x8BE5;&#x8F93;&#x51FA;&#x65E5;&#x5FD7;&#xFF01;&#xFF01;&#x53EF;&#x4EC0;&#x4E48;&#x90FD;&#x6CA1;&#x6709;&#x53D1;&#x751F;&#xFF01;&#x96BE;&#x9053;&#x662F;<code>UncaughtExceptionHandler</code>&#x8FD9;&#x8D27;&#x5E76;&#x6CA1;&#x6709;&#x6309;&#x7167;&#x9884;&#x671F;&#x6355;&#x6349;&#x5230;&#x5F02;&#x5E38;&#xFF0C;&#x4ECE;&#x800C;&#x5BFC;&#x81F4;&#x5F02;&#x5E38;&#x88AB;&#x541E;&#x4E86;&#xFF1F;&#x4E8E;&#x662F;&#x6211;&#x5728;&#x6574;&#x4E2A;<code>Callable</code>&#x5BF9;&#x8C61;&#x6267;&#x884C;&#x7684;&#x5916;&#x56F4;&#x5957;&#x4E86;&#x4E00;&#x5C42;<code>try-catch</code>&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line">pool.submit((Callable&lt;Void&gt;) () -&gt; {</div><div class="line">    <span class="keyword">try</span> {</div><div class="line">        log.info(...);<span class="comment">//&#x2460;</span></div><div class="line">        <span class="keyword">if</span> (check()) {</div><div class="line">            log.info(...);<span class="comment">//&#x2461;</span></div><div class="line">            fun1();</div><div class="line">        } <span class="keyword">else</span> {</div><div class="line">            log.info(...);<span class="comment">//&#x2462;</span></div><div class="line">            fun2();</div><div class="line">        }</div><div class="line">    } <span class="keyword">catch</span>(Exception ex) {</div><div class="line">        log.error(ex); <span class="comment">//&#x2463;</span></div><div class="line">    }</div><div class="line">    <span class="keyword">return</span> <span class="keyword">null</span>;</div><div class="line">});</div></pre></td></tr></table></figure>
+<p>&#x91CD;&#x65B0;&#x9884;&#x53D1;&#x6D4B;&#x8BD5;&#xFF0C;&#x5176;&#x7ED3;&#x679C;&#x679C;&#x7136;&#x662F;&#x2463;&#x8F93;&#x51FA;&#x4E86;&#x5F02;&#x5E38;&#x5806;&#x6808;&#xFF01;&#x901A;&#x8FC7;&#x5206;&#x6790;&#x5806;&#x6808;&#x6211;&#x53D1;&#x73B0;&#xFF0C;<code>check()</code>&#x65B9;&#x6CD5;&#x662F;&#x7F6A;&#x9B41;&#x7978;&#x9996;&#xFF0C;&#x800C;&#x8FD9;&#x4E00;&#x5207;&#x7684;&#x6839;&#x672C;&#x539F;&#x56E0;&#x5728;&#x4E8E;&#x4E00;&#x4E2A;DDL&#x53D8;&#x66F4;&#x5E76;&#x6CA1;&#x6709;&#x5728;&#x9884;&#x53D1;&#x6267;&#x884C;&#xFF0C;&#x4ECE;&#x800C;&#x5BFC;&#x81F4;<code>check()</code>&#x65B9;&#x6CD5;&#x6240;&#x4F9D;&#x8D56;&#x7684;sql&#x627E;&#x4E0D;&#x5230;&#x8868;&#x5B57;&#x6BB5;&#xFF0C;&#x62A5;&#x4E86;DB&#x5C42;&#x5F02;&#x5E38;&#x3002;&#x4F46;&#x7A76;&#x7ADF;&#x4E3A;&#x4F55;<code>UncaughtExceptionHandler</code>&#x5E76;&#x6CA1;&#x6709;&#x6309;&#x7167;&#x9884;&#x671F;&#x6355;&#x83B7;&#x5230;&#x8BE5;&#x5F02;&#x5E38;&#x5462;&#xFF1F;</p>
+<h2 id="&#x539F;&#x7406;&#x89E3;&#x6790;"><a href="#&#x539F;&#x7406;&#x89E3;&#x6790;" class="headerlink" title="&#x539F;&#x7406;&#x89E3;&#x6790;"></a>&#x539F;&#x7406;&#x89E3;&#x6790;</h2><p>&#x8FD9;&#x5C31;&#x8981;&#x4ECE;&#x7EBF;&#x7A0B;&#x6C60;&#x7684;&#x884C;&#x4E3A;&#x8BF4;&#x8D77;&#x3002;&#x5BF9;&#x4E8E;ThreadPoolExecutor&#xFF0C;&#x6211;&#x4EEC;&#x90FD;&#x77E5;&#x9053;&#x4ED6;&#x6709;&#x4E24;&#x79CD;&#x6267;&#x884C;&#x6A21;&#x5F0F;&#xFF0C;</p>
+<ul>
+<li>Future&lt;&gt; f = t.submit(new Callable&lt;&gt;)&#xFF1B;</li>
+<li>t.execute(new Runnable())&#x3002;</li>
+</ul>
+<p>&#x8FD9;&#x4E24;&#x79CD;&#x6A21;&#x5F0F;&#x5BF9;&#x4E8E;&#x5F02;&#x5E38;&#x7684;&#x5904;&#x7406;&#x5747;&#x662F;&#x4E0D;&#x540C;&#x7684;&#x3002;&#x5148;&#x6765;&#x8BF4;<code>submit()</code>&#xFF0C;&#x7EBF;&#x7A0B;&#x6C60;&#x4F1A;&#x5C06;&#x6211;&#x4EEC;&#x63D0;&#x4EA4;&#x7684;&#x4EFB;&#x52A1;&#x5C01;&#x88C5;&#x6210;<code>FutureTask</code>&#xFF0C;&#x800C;&#x6211;&#x4EEC;&#x7684;&#x4EFB;&#x52A1;&#x6267;&#x884C;&#x5165;&#x53E3;&#x5C31;&#x5728;FutureTask&#x7684;<code>run()</code>&#x65B9;&#x6CD5;&#x4E2D;&#xFF1A;</p>
+<p><img src="/uncaught-exception/1.png" alt="tu1"></p>
+<p>&#x4E0A;&#x9762;&#x6E90;&#x4EE3;&#x7801;&#x4E2D;&#x6211;&#x4EEC;&#x53D1;&#x73B0;&#x5F02;&#x5E38;&#x88AB;&#x541E;&#x6CA1;&#x4E86;&#xFF0C;setException&#x4E2D;&#x5B9E;&#x9645;&#x4E0A;&#x5C06;&#x8FD9;&#x4E2A;&#x5F02;&#x5E38;&#x8D4B;&#x503C;&#x7ED9;<code>overcome</code>&#x53D8;&#x91CF;&#xFF0C;&#x4EE5;&#x63D0;&#x4F9B;&#x7ED9;FutureTask&#x505A;&#x540E;&#x7EED;&#x5904;&#x7406;&#x3002;&#x5F53;&#x6211;&#x4EEC;<code>future.get()</code>&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x8FD9;&#x4E2A;&#x5F02;&#x5E38;&#x5C06;&#x4F1A;&#x4F5C;&#x4E3A;<code>ExecutionException</code>&#x7684;&#x5B50;&#x5F02;&#x5E38;&#x88AB;&#x6211;&#x4EEC;&#x611F;&#x77E5;&#x5230;&#x3002;</p>
+<p>&#x5BF9;&#x4E8E;<code>execute()</code>&#xFF0C;&#x7EBF;&#x7A0B;&#x6C60;&#x5C06;&#x6211;&#x4EEC;&#x63D0;&#x4EA4;&#x7684;&#x4EFB;&#x52A1;&#x5C01;&#x88C5;&#x6210;&#x4E86;<code>Worker</code>&#xFF08;ThreadPoolExecutor&#x7684;&#x5185;&#x90E8;&#x7C7B;&#xFF09;&#xFF0C;&#x800C;&#x6211;&#x4EEC;&#x7684;&#x4EFB;&#x52A1;&#x6267;&#x884C;&#x5165;&#x53E3;&#x4E5F;&#x88AB;&#x5C01;&#x88C5;&#x5728;&#x4E86;Worker&#x5BF9;&#x8C61;&#x91CC;&#xFF1A;</p>
+<p><img src="/uncaught-exception/2.png" alt="tu2"></p>
+<p>&#x4E0A;&#x8FF0;&#x4EE3;&#x7801;&#x4F4D;&#x4E8E;ThreadPoolExecutor&#x7684;<code>runWorker()</code>&#x65B9;&#x6CD5;&#x4E2D;&#xFF0C;&#x53EF;&#x4EE5;&#x770B;&#x5230;&#xFF0C;&#x5F02;&#x5E38;&#x4F9D;&#x7136;&#x88AB;&#x541E;&#x4E86;&#x3002;</p>
+<p><strong>&#x56E0;&#x6B64;&#xFF0C;&#x603B;&#x7684;&#x6765;&#x8BF4;&#xFF0C;UncaughtExceptionHandler&#x4E0D;&#x751F;&#x6548;&#x7684;&#x6839;&#x672C;&#x539F;&#x56E0;&#x5728;&#x4E8E;&#xFF1A;&#x7EBF;&#x7A0B;&#x6C60;&#x60F3;&#x5F53;&#x7136;&#x7684;&#x6355;&#x83B7;&#x4E86;&#x6211;&#x4EEC;&#x7684;&#x5F02;&#x5E38;&#xFF0C;&#x5E76;&#x66FF;&#x6211;&#x4EEC;&#x505A;&#x4E86;&#x5904;&#x7406;&#xFF01;&#xFF01;</strong></p>
+<h2 id="&#x89E3;&#x51B3;&#x529E;&#x6CD5;"><a href="#&#x89E3;&#x51B3;&#x529E;&#x6CD5;" class="headerlink" title="&#x89E3;&#x51B3;&#x529E;&#x6CD5;"></a>&#x89E3;&#x51B3;&#x529E;&#x6CD5;</h2><p>&#x6700;&#x7B80;&#x5355;&#x7684;&#x89E3;&#x51B3;&#x529E;&#x6CD5;&#x5F53;&#x7136;&#x5C31;&#x662F;&#x6211;&#x4EEC;&#x81EA;&#x5DF1;try-catch&#x6574;&#x4E2A;&#x65B9;&#x6CD5;&#x4F53;&#x3002;&#x4F46;&#x5982;&#x679C;&#x6211;&#x4EEC;&#x975E;&#x8981;&#x505A;&#x5F02;&#x5E38;&#x7684;&#x7EDF;&#x4E00;&#x5904;&#x7406;&#xFF0C;&#x90A3;&#x4E48;&#x4EA6;&#x53EF;&#x4EE5;&#x91C7;&#x7528;&#x4E0B;&#x9762;&#x4E24;&#x79CD;&#x65B9;&#x5F0F;&#xFF1A;</p>
+<p>&#x5176;&#x4E00;&#xFF0C;&#x91C7;&#x7528;&#x7EBF;&#x7A0B;&#x6C60;&#x94A9;&#x5B50;afterExecute&#xFF1A;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyThreadExecutor</span> <span class="keyword">extends</span> <span class="title">ThreadPoolExecutor</span> </span>{</div><div class="line">    <span class="meta">@Override</span></div><div class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">afterExecute</span><span class="params">(Runnable r, Throwable t)</span> </span>{</div><div class="line">        <span class="comment">// &#x5904;&#x7406;&#x5F02;&#x5E38;</span></div><div class="line">    }</div><div class="line">}</div></pre></td></tr></table></figure>
+<p>&#x8FD9;&#x79CD;&#x65B9;&#x5F0F;&#xFF0C;&#x8981;&#x6C42;&#x6211;&#x4EEC;&#x6269;&#x5C55;jdk&#x7EBF;&#x7A0B;&#x6C60;&#x3002;&#x6CE8;&#x610F;&#xFF1A;&#x4ED6;&#x53EA;&#x80FD;&#x5728;<code>execute</code>&#x6A21;&#x5F0F;&#x4E0B;&#x751F;&#x6548;&#xFF0C;&#x5BF9;&#x4E8E;<code>submit</code>&#x65B9;&#x6CD5;&#x8C03;&#x7528;&#x4EA7;&#x751F;&#x7684;&#x5F02;&#x5E38;&#xFF0C;afterExecute&#x7684;Throwable&#x5165;&#x53C2;&#x662F;null&#x3002;</p>
+<p>&#x5176;&#x4E8C;&#xFF0C;&#x91C7;&#x7528;CompleteableFuture&#x3002;</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><div class="line">CompletableFuture</div><div class="line">    .runAsync(()-&gt;{<span class="keyword">throw</span> <span class="keyword">new</span> RuntimeException();}, threadPool)</div><div class="line">    .exceptionally(e-&gt; {</div><div class="line">        <span class="comment">// &#x7EDF;&#x4E00;&#x5F02;&#x5E38;&#x5904;&#x7406;</span></div><div class="line">        e.printStackTrace();</div><div class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</div><div class="line">});</div></pre></td></tr></table></figure>
+<p>&#x66F4;&#x591A;&#x5173;&#x4E8E;CompletableFuture&#xFF0C;&#x8BF7;&#x53C2;&#x8003;&#x6211;&#x7684;&#x6587;&#x7AE0;&#xFF1A;<a href="http://kriszhang.com/CompletableFuture/">&#x7406;&#x89E3;CompletableFuture</a></p>
+<h2 id="&#x540E;&#x8BB0;"><a href="#&#x540E;&#x8BB0;" class="headerlink" title="&#x540E;&#x8BB0;"></a>&#x540E;&#x8BB0;</h2><p>&#x8FD9;&#x4E2A;&#x95EE;&#x9898;&#x8FD8;&#x597D;&#x53D1;&#x73B0;&#x7684;&#x6BD4;&#x8F83;&#x53CA;&#x65F6;&#xFF0C;&#x60F3;&#x60F3;&#x5982;&#x679C;&#x5F53;&#x65F6;&#x7684;DDL&#x6267;&#x884C;&#x4E86;&#xFF0C;&#x90A3;&#x4E48;&#x4FBF;&#x4E0D;&#x4F1A;&#x51FA;&#x73B0;&#x8FD9;&#x4E2A;&#x2019;&#x8BE1;&#x5F02;&#x2018;&#x7684;&#x73B0;&#x8C61;&#xFF0C;&#x4E5F;&#x5C31;&#x5F88;&#x6709;&#x53EF;&#x80FD;&#x5E26;&#x7740;&#x8FD9;&#x4E2A;bug&#x4E0A;&#x7EBF;&#x3002;&#x5F53;&#x771F;&#x7684;&#x7EBF;&#x4E0A;&#x51FA;&#x73B0;&#x95EE;&#x9898;&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x4E5F;&#x4FBF;&#x65E0;&#x6CD5;&#x505A;&#x51FA;&#x4EFB;&#x4F55;&#x7684;&#x6392;&#x67E5;&#xFF0C;&#x56E0;&#x4E3A;&#x4F60;&#x7684;&#x5F02;&#x5E38;&#x88AB;&#x7EBF;&#x7A0B;&#x6C60;&#x541E;&#x4E86;&#x3002;&#x6240;&#x4EE5;&#x4F5C;&#x4E3A;&#x4E00;&#x6761;&#x7ECF;&#x9A8C;&#xFF0C;&#x81EA;&#x5B9A;&#x4E49;&#x7EBF;&#x7A0B;&#x6C60;&#x6240;&#x6267;&#x884C;&#x7684;&#x4EFB;&#x4F55;&#x4EFB;&#x52A1;&#xFF0C;&#x6211;&#x4EEC;&#x90FD;&#x5E94;&#x8BE5;&#x624B;&#x52A8;&#x6355;&#x83B7;&#x5F02;&#x5E38;&#x5E76;&#x5904;&#x7406;&#xFF0C;&#x4EE5;&#x9632;&#x6B62;&#x5F02;&#x5E38;&#x541E;&#x6CA1;&#x3002;</p>
+
+                
+  <!-- css -->
+  <style type="text/css">
+      .center {
+          text-align: center;
+      }
+      .hidden {
+          display: none;
+      }
+    .donate_bar a.btn_donate{
+      display: inline-block;
+      width: 82px;
+      height: 82px;
+      background: url("http://7xsl28.com1.z0.glb.clouddn.com/btn_reward.gif") no-repeat;
+      _background: url("http://7xsl28.com1.z0.glb.clouddn.com/btn_reward.gif") no-repeat;
+
+      <!-- http://img.t.sinajs.cn/t5/style/images/apps_PRF/e_media/btn_reward.gif
+           因为本 hexo 生成的博客所用的 theme 的 a:hover 带动画效果，
+         为了在让打赏按钮显示效果正常 而 添加了以下几行 css，
+         嵌入其它博客时不一定要它们。 -->
+      -webkit-transition: background 0s;
+      -moz-transition: background 0s;
+      -o-transition: background 0s;
+      -ms-transition: background 0s;
+      transition: background 0s;
+      <!-- /让打赏按钮的效果显示正常 而 添加的几行 css 到此结束 -->
+    }
+
+    .donate_bar a.btn_donate:hover{ background-position: 0px -82px;}
+    .donate_bar .donate_txt {
+      display: block;
+      color: #9d9d9d;
+      font: 14px/2 "Microsoft Yahei";
+    }
+    .bold{ font-weight: bold; }
+  </style>
+  <!-- /css -->
+
+    <!-- Donate Module -->
+  <div id="donate_module">
+
+  <!-- btn_donate & tips -->
+  <div id="donate_board" class="donate_bar center">
+      <br>
+      ------------------------------------------------------------------------------------------------------------------------------
+      <br>
+    <a id="btn_donate" class="btn_donate" target="_self" href="javascript:;" title="Donate 打赏"></a>
+    <span class="donate_txt">
+      Enjoy it ? Donate me !  欣赏此文？求鼓励，求支持！
+    </span>
+
+
+  </div>
+  <!-- /btn_donate & tips -->
+
+  <!-- donate guide -->
+
+  <div id="donate_guide" class="donate_bar center hidden">
+        <br>
+        <br>
+
+    <a href="/img/wechat_pay.jpg" title="用微信扫一扫哦~" class="fancybox" rel="article0">
+      <img src="/img/wechat_pay.jpg" title="微信打赏 Colin" height="190px" width="auto"/>
+    </a>
+
+        &nbsp;&nbsp;
+
+    <!-- <a href="undefined" title="用支付宝扫一扫即可~" class="fancybox" rel="article0">
+      <img src="undefined" title="支付宝打赏 Colin" height="190px" width="auto"/>
+    </a> -->
+
+    <span class="donate_txt">
+      Enjoy it ? Donate me !  欣赏此文？求鼓励，求支持！
+    </span>
+
+  </div>
+  <!-- /donate guide -->
+
+  <!-- donate script -->
+  <script type="text/javascript">
+    document.getElementById('btn_donate').onclick = function() {
+      $('#donate_board').addClass('hidden');
+      $('#donate_guide').removeClass('hidden');
+    }
+
+    function donate_on_web(){
+      $('#donate').submit();
+        }
+
+    var original_window_onload = window.onload;
+        window.onload = function () {
+            if (original_window_onload) {
+                original_window_onload();
+            }
+            document.getElementById('donate_board_wdg').className = 'hidden';
+    }
+  </script>
+  <!-- /donate script -->
+</div>
+<!-- /Donate Module -->
+   
+
+ </br>
+ </br>
+
+             
+                <ul class="pager">
+                    
+                    
+                        <li class="next">
+                            <a href="/geohash/" data-toggle="tooltip" data-placement="top" title="关于周边位置搜索的小结">Next Post &rarr;</a>
+                        </li>
+                    
+                </ul>
+
+                
+
+            </div>
+    <!-- Side Catalog Container -->
+        
+
+    <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#问题排查" title="问题排查">问题排查</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+
+                    
+                        <li><a href="http://youdang.github.io" target="_blank">youdang&#39;s Blog</a></li>
+                    
+                </ul>
+                
+            </div>
+
+        </div>
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("http://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'always',
+          placement: 'right',
+          icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/TooBusyTooLazy">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/zhang-yan-32-14">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/kriszhang123">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/zhangyan985">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/kris-zhang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/岩-张-83aa7a121">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Kris&#39; Blog 2017 
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> 
+                    <span style="display: inline-block; margin: 0 5px;">
+                        <i class="fa fa-heart"></i>
+                    </span> 
+                    Ported by <a href="http://blog.kaijun.rocks">Kaijun</a> | 
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=kaijun&repo=hexo-theme-huxblog&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("kriszhang.com/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("http://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+<script>
+    // dynamic User by Hux
+    var _gaId = 'UA-49627206-1';
+    var _gaDomain = 'huangxuan.me';
+
+    // Originial
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+
+<!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4cc1f2d8f3067386cc5cdb626a202900';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "//hm.baidu.com/hm.js?" + _baId;
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+
+<!-- Side Catalog -->
+
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="kriszhang.com/undefined" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work --><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+
+</body>
+
+</html>
