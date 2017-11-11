@@ -226,7 +226,7 @@
 </ul>
 <p>&#x8FD9;&#x4E24;&#x79CD;&#x6A21;&#x5F0F;&#x5BF9;&#x4E8E;&#x5F02;&#x5E38;&#x7684;&#x5904;&#x7406;&#x5747;&#x662F;&#x4E0D;&#x540C;&#x7684;&#x3002;&#x5148;&#x6765;&#x8BF4;<code>submit()</code>&#xFF0C;&#x7EBF;&#x7A0B;&#x6C60;&#x4F1A;&#x5C06;&#x6211;&#x4EEC;&#x63D0;&#x4EA4;&#x7684;&#x4EFB;&#x52A1;&#x5C01;&#x88C5;&#x6210;<code>FutureTask</code>&#xFF0C;&#x800C;&#x6211;&#x4EEC;&#x7684;&#x4EFB;&#x52A1;&#x6267;&#x884C;&#x5165;&#x53E3;&#x5C31;&#x5728;FutureTask&#x7684;<code>run()</code>&#x65B9;&#x6CD5;&#x4E2D;&#xFF1A;</p>
 <p><img src="/uncaught-exception/1.png" alt="tu1"></p>
-<p>&#x4E0A;&#x9762;&#x6E90;&#x4EE3;&#x7801;&#x4E2D;&#x6211;&#x4EEC;&#x53D1;&#x73B0;&#x5F02;&#x5E38;&#x88AB;&#x541E;&#x6CA1;&#x4E86;&#xFF0C;setException&#x4E2D;&#x5B9E;&#x9645;&#x4E0A;&#x5C06;&#x8FD9;&#x4E2A;&#x5F02;&#x5E38;&#x8D4B;&#x503C;&#x7ED9;<code>outcome</code>&#x53D8;&#x91CF;&#xFF0C;&#x4EE5;&#x63D0;&#x4F9B;&#x7ED9;FutureTask&#x505A;&#x540E;&#x7EED;&#x5904;&#x7406;&#x3002;&#x5F53;&#x6211;&#x4EEC;<code>future.get()</code>&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x8FD9;&#x4E2A;&#x5F02;&#x5E38;&#x5C06;&#x4F1A;&#x4F5C;&#x4E3A;<code>ExecutionException</code>&#x7684;&#x5B50;&#x5F02;&#x5E38;&#x88AB;&#x6211;&#x4EEC;&#x611F;&#x77E5;&#x5230;&#x3002;</p>
+<p>&#x4E0A;&#x9762;&#x6E90;&#x4EE3;&#x7801;&#x4E2D;&#x6211;&#x4EEC;&#x53D1;&#x73B0;&#x5F02;&#x5E38;&#x88AB;&#x541E;&#x6CA1;&#x4E86;&#xFF0C;setException&#x4E2D;&#x5B9E;&#x9645;&#x4E0A;&#x5C06;&#x8FD9;&#x4E2A;&#x5F02;&#x5E38;&#x8D4B;&#x503C;&#x7ED9;<code>overcome</code>&#x53D8;&#x91CF;&#xFF0C;&#x4EE5;&#x63D0;&#x4F9B;&#x7ED9;FutureTask&#x505A;&#x540E;&#x7EED;&#x5904;&#x7406;&#x3002;&#x5F53;&#x6211;&#x4EEC;<code>future.get()</code>&#x7684;&#x65F6;&#x5019;&#xFF0C;&#x8FD9;&#x4E2A;&#x5F02;&#x5E38;&#x5C06;&#x4F1A;&#x4F5C;&#x4E3A;<code>ExecutionException</code>&#x7684;&#x5B50;&#x5F02;&#x5E38;&#x88AB;&#x6211;&#x4EEC;&#x611F;&#x77E5;&#x5230;&#x3002;</p>
 <p>&#x5BF9;&#x4E8E;<code>execute()</code>&#xFF0C;&#x7EBF;&#x7A0B;&#x6C60;&#x5C06;&#x6211;&#x4EEC;&#x63D0;&#x4EA4;&#x7684;&#x4EFB;&#x52A1;&#x5C01;&#x88C5;&#x6210;&#x4E86;<code>Worker</code>&#xFF08;ThreadPoolExecutor&#x7684;&#x5185;&#x90E8;&#x7C7B;&#xFF09;&#xFF0C;&#x800C;&#x6211;&#x4EEC;&#x7684;&#x4EFB;&#x52A1;&#x6267;&#x884C;&#x5165;&#x53E3;&#x4E5F;&#x88AB;&#x5C01;&#x88C5;&#x5728;&#x4E86;Worker&#x5BF9;&#x8C61;&#x91CC;&#xFF1A;</p>
 <p><img src="/uncaught-exception/2.png" alt="tu2"></p>
 <p>&#x4E0A;&#x8FF0;&#x4EE3;&#x7801;&#x4F4D;&#x4E8E;ThreadPoolExecutor&#x7684;<code>runWorker()</code>&#x65B9;&#x6CD5;&#x4E2D;&#xFF0C;&#x53EF;&#x4EE5;&#x770B;&#x5230;&#xFF0C;&#x5F02;&#x5E38;&#x4F9D;&#x7136;&#x88AB;&#x541E;&#x4E86;&#x3002;</p>
@@ -348,6 +348,10 @@
 
              
                 <ul class="pager">
+                    
+                        <li class="previous">
+                            <a href="/high_performance/" data-toggle="tooltip" data-placement="top" title="高并发和高可用的一点思考">&larr; Previous Post</a>
+                        </li>
                     
                     
                         <li class="next">
